@@ -129,12 +129,14 @@ public class PaddleConfig : IDisposable
     {
         string version = Version.Split('\n')[0].Split(':')[1];
         string[] parts = version.Split('.');
-        if (parts.Length != 3)
+        if (parts.Length == 3 || parts.Length == 4)
         {
-            return new Version(2, 5, 0);
+            return new Version(int.Parse(parts[0]), int.Parse(parts[1]), int.Parse(parts[2]));
         }
-
-        return new Version(int.Parse(parts[0]), int.Parse(parts[1]), int.Parse(parts[2]));
+        else
+        {
+            return new Version(3, 3, 0);
+        }
     }
 
     /// <summary>
