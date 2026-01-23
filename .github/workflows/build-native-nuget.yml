@@ -2,7 +2,7 @@
 on:
   push:
     branches:
-      - feature/3.1
+      - master
     paths:
       - .github/workflows/build-native-nuget.yml
   workflow_dispatch:
@@ -11,7 +11,7 @@ permissions:
   packages: write
 
 env:
-  PADDLE_VERSION: "3.1.0"
+  PADDLE_VERSION: "3.3.0"
   
 jobs:
   build-all:
@@ -21,15 +21,7 @@ jobs:
         include:
           - { title: win64.mkl,                  rid: win-x64, action: paddle-build.yml, artifact: windows-2022_c_mkldnn }
           - { title: win64.openblas,             rid: win-x64, action: paddle-build.yml, artifact: windows-2022_c_openblas }
-          - { title: win64.openblas-noavx,       rid: win-x64, action: paddle-build.yml, artifact: windows-2022_c_openblas_noavx }  
-          - { title: win64.cu118_cudnn89_sm61,   rid: win-x64, action: paddle-build.yml, artifact: windows-2022_c_cu118_cudnn89_sm61 }
-          - { title: win64.cu118_cudnn89_sm75,   rid: win-x64, action: paddle-build.yml, artifact: windows-2022_c_cu118_cudnn89_sm75 }
-          - { title: win64.cu118_cudnn89_sm86,   rid: win-x64, action: paddle-build.yml, artifact: windows-2022_c_cu118_cudnn89_sm86 }
-          - { title: win64.cu118_cudnn89_sm89,   rid: win-x64, action: paddle-build.yml, artifact: windows-2022_c_cu118_cudnn89_sm89 }
-          - { title: win64.cu126_cudnn95_sm61,   rid: win-x64, action: paddle-build.yml, artifact: windows-2022_c_cu126_cudnn95_sm61 }
-          - { title: win64.cu126_cudnn95_sm75,   rid: win-x64, action: paddle-build.yml, artifact: windows-2022_c_cu126_cudnn95_sm75 }
-          - { title: win64.cu126_cudnn95_sm86,   rid: win-x64, action: paddle-build.yml, artifact: windows-2022_c_cu126_cudnn95_sm86 }
-          - { title: win64.cu126_cudnn95_sm89,   rid: win-x64, action: paddle-build.yml, artifact: windows-2022_c_cu126_cudnn95_sm89 }
+          - { title: win64.openblas-noavx,       rid: win-x64, action: paddle-build.yml, artifact: windows-2022_c_openblas_noavx }
           - { title: win64.cu129_cudnn910_sm61,  rid: win-x64, action: paddle-build.yml, artifact: windows-2022_c_cu129_cudnn910_sm61 }
           - { title: win64.cu129_cudnn910_sm75,  rid: win-x64, action: paddle-build.yml, artifact: windows-2022_c_cu129_cudnn910_sm75 }
           - { title: win64.cu129_cudnn910_sm86,  rid: win-x64, action: paddle-build.yml, artifact: windows-2022_c_cu129_cudnn910_sm86 }
@@ -39,26 +31,28 @@ jobs:
           - { title: linux-x64.mkl,              rid: linux-x64,   action: paddle-build.yml, artifact: ubuntu-22.04_c_mkldnn }
           - { title: linux-x64,                  rid: linux-x64,   action: paddle-build.yml, artifact: ubuntu-22.04_c_openvino }
           - { title: linux-arm64,                rid: linux-arm64, action: paddle-build.yml, artifact: ubuntu-22.04-arm_c_openblas }
-          - { title: osx-x64,                    rid: osx-x64,     action: paddle-build.yml, artifact: macos-13_c_openblas }
           - { title: osx-arm64,                  rid: osx-arm64,   action: paddle-build.yml, artifact: macos-15_c_openblas }
   
   
     steps:
     - name: Download Artifacts
       env:
-        GH_TOKEN: ${{ github.token }}
+        # NOTE: downloading artifacts from a different repo may require a PAT.
+        # If `github.token` can't access the upstream repo artifacts, create a secret `PADDLE_GH_TOKEN`.
+        GH_TOKEN: ${{ secrets.PADDLE_GH_TOKEN || github.token }}
       run: |
+        UPSTREAM_REPO="sdcb/Paddle"
+        UPSTREAM_WORKFLOW="build.yml"
         echo "arch=$(echo '${{ matrix.rid }}' | awk -F'-' '{print $NF}')" >> $GITHUB_ENV
-        echo "Fetching latest successful ${{ matrix.action }} run of branch ${{ github.ref_name }}"
-        RUN_ID=$(gh run list -R ${{ github.repository }} \
-                  --workflow=${{ matrix.action }} \
-                  --branch=${{ github.ref_name }} \
+        echo "Fetching latest successful $UPSTREAM_WORKFLOW run of repo $UPSTREAM_REPO (all branches)"
+        RUN_ID=$(gh run list -R "$UPSTREAM_REPO" \
+                  --workflow="$UPSTREAM_WORKFLOW" \
                   --status=success --limit=1 \
                   --json databaseId | jq -r '.[0].databaseId')
         echo "Run id = $RUN_ID"
         
         echo "Download artifact ${{ matrix.artifact }}"
-        gh run download -R ${{ github.repository }} $RUN_ID --name ${{ matrix.artifact }} --dir paddle_inference_c
+        gh run download -R "$UPSTREAM_REPO" "$RUN_ID" --name "${{ matrix.artifact }}" --dir paddle_inference_c
 
         echo "::group::Artifact tree"
         ls -lR paddle_inference_c
@@ -211,7 +205,3 @@ jobs:
     - name: Push nupkg to Github Packages
       run: |
         dotnet nuget push ${{ env.NUPKG_PATH }} --source "https://nuget.pkg.github.com/${{ github.repository_owner }}" --api-key "${{ secrets.GITHUB_TOKEN }}" --skip-duplicate
-
-    - name: Push nupkg to ProGet
-      run: |
-        dotnet nuget push ${{ env.NUPKG_PATH }} --source "https://proget.starworks.cc:88/nuget/test/v3/index.json" --api-key "${{ secrets.PROGET_API_KEY }}" --skip-duplicate --timeout 21600
