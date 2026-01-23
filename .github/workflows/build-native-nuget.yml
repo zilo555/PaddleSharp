@@ -39,7 +39,7 @@ jobs:
       env:
         # NOTE: downloading artifacts from a different repo may require a PAT.
         # If `github.token` can't access the upstream repo artifacts, create a secret `PADDLE_GH_TOKEN`.
-        GH_TOKEN: ${{ secrets.PADDLE_GH_TOKEN || github.token }}
+        GH_TOKEN: ${{ github.token }}
       run: |
         UPSTREAM_REPO="sdcb/Paddle"
         UPSTREAM_WORKFLOW="build.yml"
