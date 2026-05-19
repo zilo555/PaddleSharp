@@ -45,7 +45,7 @@ jobs:
       run: |
         if [ "${{ runner.os }}" == "macOS" ]; then
           pip install numpy protobuf wheel ninja --break-system-packages
-        else if [ "${{ runner.os }}" = "Windows" ]; then
+        elseif [ "${{ runner.os }}" = "Windows" ]; then
           # LNK1187 pd_utils.cc.obj?
           pip install numpy protobuf wheel ninja==1.11.1.4
         else
