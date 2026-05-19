@@ -17,6 +17,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     strategy:
+      fail-fast: false
       matrix:
         include:
           - { os: windows-2025,     name: openblas_noavx,       cmake_flags: "-DWITH_AVX=OFF -DWITH_MKL=OFF -DWITH_ONNXRUNTIME=ON" }
