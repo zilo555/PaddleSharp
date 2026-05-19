@@ -6,6 +6,7 @@ on:
       - master
     paths:
       - .github/workflows/paddle-build.yml
+      - build/patches/**
   workflow_dispatch:
 
 env:
@@ -109,9 +110,17 @@ jobs:
       shell: pwsh
       run: |
         cd ./paddle-src
-        Invoke-WebRequest -Uri https://raw.githubusercontent.com/sdcb/PaddleSharp/refs/heads/feature/3.3/build/capi.patch -OutFile capi.patch
-        git apply --ignore-whitespace capi.patch
-        rm capi.patch
+        $patchBaseUrl = 'https://raw.githubusercontent.com/sdcb/PaddleSharp/refs/heads/feature/3.3/build/patches'
+        $patches = @(
+          '01-load-from-memory.patch',
+          '02-warprnnt-deps-order.patch'
+        )
+
+        foreach ($patch in $patches) {
+          Invoke-WebRequest -Uri "$patchBaseUrl/$patch" -OutFile $patch
+          git apply --ignore-whitespace $patch
+          rm $patch
+        }
 
     - name: Configure with CMake
       shell: pwsh

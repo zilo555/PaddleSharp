@@ -1,0 +1,22 @@
+diff --git a/paddle/phi/backends/dynload/CMakeLists.txt b/paddle/phi/backends/dynload/CMakeLists.txt
+index ce457f67e8..dd64e8b047 100644
+--- a/paddle/phi/backends/dynload/CMakeLists.txt
++++ b/paddle/phi/backends/dynload/CMakeLists.txt
+@@ -169,7 +169,7 @@ elseif(WITH_GPU)
+     nv_library(
+       dynload_common static
+       SRCS ${DYNLOAD_COMMON_SRCS}
+-      DEPS warpctc)
++      DEPS warpctc warprnnt)
+     collect_srcs(backends_srcs SRCS ${CUDA_SRCS})
+   else()
+     collect_srcs(backends_srcs SRCS ${DYNLOAD_COMMON_SRCS} ${CUDA_SRCS})
+@@ -181,7 +181,7 @@ else()
+     cc_library(
+       dynload_common static
+       SRCS ${DYNLOAD_COMMON_SRCS}
+-      DEPS warpctc)
++      DEPS warpctc warprnnt)
+   else()
+     collect_srcs(backends_srcs SRCS ${DYNLOAD_COMMON_SRCS})
+   endif()
