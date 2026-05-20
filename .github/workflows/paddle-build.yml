@@ -117,6 +117,7 @@ jobs:
         $patches = @(
           '01-load-from-memory.patch',
           '02-warprnnt-deps-order.patch'
+          '03-onednn-add-double.patch'
         )
 
         foreach ($patch in $patches) {
