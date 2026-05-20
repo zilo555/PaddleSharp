@@ -1,5 +1,5 @@
 diff --git a/paddle/fluid/inference/api/analysis_predictor.cc b/paddle/fluid/inference/api/analysis_predictor.cc
-index 04a14f37aa..e8122029bf 100644
+index 04a14f37aa..6d4f9753f3 100644
 --- a/paddle/fluid/inference/api/analysis_predictor.cc
 +++ b/paddle/fluid/inference/api/analysis_predictor.cc
 @@ -464,7 +464,9 @@ bool AnalysisPredictor::Init(
@@ -13,18 +13,73 @@ index 04a14f37aa..e8122029bf 100644
      load_pir_model_ =
          model_path.substr(model_path.find_last_of(".") + 1) == "json";
    } else if (!config_.model_dir().empty()) {
+@@ -1379,12 +1381,14 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
+       }
+ 
+     } else {
+-      if (std::filesystem::exists(config_.params_file())) {
++      if (config_.model_from_memory() ||
++          std::filesystem::exists(config_.params_file())) {
+         pir::LoadCombineFunction(config_.params_file(),
+-                                 filter_param_names,
+-                                 &tensor_out,
+-                                 false,
+-                                 place_);
++               filter_param_names,
++               &tensor_out,
++               false,
++               place_,
++               config_.model_from_memory());
+       } else {
+         LOG(WARNING) << "【Pir Load】Parameter Path not exists: "
+                      << config_.params_file();
+@@ -1404,7 +1408,8 @@ bool AnalysisPredictor::PreparePirProgram() {
+       common::errors::Fatal("Here, pir_program must be a nullptr!"));
+ 
+   pir_program_ = std::make_shared<pir::Program>(pir::IrContext::Instance());
+-  pir::ReadModule(config_.prog_file(), pir_program_.get());
++  pir::ReadModule(
++      config_.prog_file(), pir_program_.get(), -1, config_.model_from_memory());
+   if (!SaveOrLoadPirParameters(false)) {
+     return false;
+   }
+diff --git a/paddle/fluid/pir/serialize_deserialize/include/interface.h b/paddle/fluid/pir/serialize_deserialize/include/interface.h
+index 268444e60d..49cdf6ab4c 100644
+--- a/paddle/fluid/pir/serialize_deserialize/include/interface.h
++++ b/paddle/fluid/pir/serialize_deserialize/include/interface.h
+@@ -63,7 +63,8 @@ void IR_API WriteModule(const pir::Program& program,
+  */
+ bool IR_API ReadModule(const std::string& file_path,
+                        pir::Program* program,
+-                       int64_t pir_version = -1);
++                       int64_t pir_version = -1,
++                       bool model_from_memory = false);
+ 
+ /**
+  * @brief Save the given tensor into a single file at the specified file path
+@@ -149,5 +150,6 @@ void IR_API LoadCombineFunction(const std::string& file_path,
+                                 const std::vector<std::string>& names,
+                                 std::vector<phi::DenseTensor*>* out,
+                                 bool load_as_fp16,
+-                                phi::Place place = phi::Place());
++                                phi::Place place = phi::Place(),
++                                bool model_from_memory = false);
+ }  // namespace pir
 diff --git a/paddle/fluid/pir/serialize_deserialize/src/interface.cc b/paddle/fluid/pir/serialize_deserialize/src/interface.cc
-index bc597db6d1..975e331b02 100644
+index bc597db6d1..4947f68079 100644
 --- a/paddle/fluid/pir/serialize_deserialize/src/interface.cc
 +++ b/paddle/fluid/pir/serialize_deserialize/src/interface.cc
-@@ -74,8 +74,13 @@ void WriteModule(const pir::Program& program,
+@@ -73,9 +73,15 @@ void WriteModule(const pir::Program& program,
+ 
  bool ReadModule(const std::string& file_path,
                  pir::Program* program,
-                 int64_t pir_version) {
+-                int64_t pir_version) {
 -  std::ifstream f(file_path);
 -  Json data = Json::parse(f);
++                int64_t pir_version,
++                bool model_from_memory) {
 +  Json data;
-+  if (file_path.size() < 1000) {
++  if (!model_from_memory) {
 +    std::ifstream f(file_path);
 +    data = Json::parse(f);
 +  } else {
@@ -34,7 +89,7 @@ index bc597db6d1..975e331b02 100644
      pir_version = DEVELOP_VERSION;
      VLOG(6) << "pir_version is null, get pir_version: " << pir_version;
 diff --git a/paddle/fluid/pir/serialize_deserialize/src/save_load_parameters.cc b/paddle/fluid/pir/serialize_deserialize/src/save_load_parameters.cc
-index 1d563c326a..07986c95dc 100644
+index 1d563c326a..287e8d7e37 100644
 --- a/paddle/fluid/pir/serialize_deserialize/src/save_load_parameters.cc
 +++ b/paddle/fluid/pir/serialize_deserialize/src/save_load_parameters.cc
 @@ -11,7 +11,9 @@ limitations under the License. */
@@ -47,10 +102,11 @@ index 1d563c326a..07986c95dc 100644
  
  #include "glog/logging.h"
  #include "paddle/fluid/framework/lod_tensor.h"
-@@ -188,13 +190,20 @@ void LoadCombineFunction(const std::string& file_path,
+@@ -187,14 +189,22 @@ void LoadCombineFunction(const std::string& file_path,
+                          const std::vector<std::string>& names,
                           std::vector<phi::DenseTensor*>* out,
                           bool load_as_fp16,
-                          phi::Place place) {
+-                         phi::Place place) {
 -  std::ifstream fin(file_path, std::ios::binary);
 -  PADDLE_ENFORCE_EQ(static_cast<bool>(fin),
 -                    true,
@@ -58,8 +114,10 @@ index 1d563c326a..07986c95dc 100644
 -                        "Load operator fail to open file %s, please check "
 -                        "whether the model file is complete or damaged.",
 -                        file_path));
++                         phi::Place place,
++                         bool model_from_memory) {
 +  std::unique_ptr<std::istream> fin_ptr;
-+  if (file_path.size() < 1000) {
++  if (!model_from_memory) {
 +    fin_ptr = std::make_unique<std::ifstream>(file_path, std::ios::binary);
 +    PADDLE_ENFORCE_EQ(static_cast<bool>(*fin_ptr),
 +                      true,
