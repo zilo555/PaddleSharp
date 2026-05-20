@@ -39,8 +39,8 @@ jobs:
           - { title: linux-x64.mkl,              rid: linux-x64,   action: paddle-build.yml, artifact: ubuntu-22.04_c_mkldnn }
           - { title: linux-x64,                  rid: linux-x64,   action: paddle-build.yml, artifact: ubuntu-22.04_c_openvino }
           - { title: linux-arm64,                rid: linux-arm64, action: paddle-build.yml, artifact: ubuntu-22.04-arm_c_openblas }
-          - { title: osx-x64,                    rid: osx-x64,     action: paddle-build.yml, artifact: macos-13_c_openblas }
-          - { title: osx-arm64,                  rid: osx-arm64,   action: paddle-build.yml, artifact: macos-15_c_openblas }
+          - { title: osx-x64,                    rid: osx-x64,     action: paddle-build.yml, artifact: macos-26-intel_c_openblas }
+          - { title: osx-arm64,                  rid: osx-arm64,   action: paddle-build.yml, artifact: macos-26_c_openblas }
   
   
     steps:
