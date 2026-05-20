@@ -118,6 +118,7 @@ jobs:
           '01-load-from-memory.patch',
           '02-warprnnt-deps-order.patch'
           '03-onednn-add-double.patch'
+          '04-speedup-infer-gpu'
         )
 
         foreach ($patch in $patches) {
