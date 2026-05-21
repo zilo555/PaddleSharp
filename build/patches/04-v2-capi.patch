@@ -890,6 +890,76 @@ index 90cd4c9678..b01ded641b 100644
  #ifdef __cplusplus
  }  // extern "C"
  #endif
+diff --git a/paddle/fluid/inference/capi_exp/pd_error_internal.h b/paddle/fluid/inference/capi_exp/pd_error_internal.h
+new file mode 100644
+index 0000000000..75cf63257c
+--- /dev/null
++++ b/paddle/fluid/inference/capi_exp/pd_error_internal.h
+@@ -0,0 +1,63 @@
++// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++#pragma once
++
++#include <exception>
++#include <stdexcept>
++#include <string>
++#include <utility>
++
++#include "paddle/fluid/inference/capi_exp/pd_common.h"
++#include "paddle/fluid/platform/enforce.h"
++
++namespace paddle_infer {
++namespace capi_exp {
++
++void ClearLastError();
++int GetLastErrorCode();
++const char* GetLastErrorMessage();
++int SetLastError(PD_StatusCode code, const std::string& message);
++
++template <typename Func>
++int SafeCall(Func&& func) noexcept {
++  try {
++    ClearLastError();
++    std::forward<Func>(func)();
++    return PD_STATUS_OK;
++  } catch (const common::enforce::EnforceNotMet& exception) {
++    return SetLastError(PD_STATUS_PADDLE_EXCEPTION, exception.what());
++  } catch (const std::invalid_argument& exception) {
++    return SetLastError(PD_STATUS_INVALID_ARGUMENT, exception.what());
++  } catch (const std::exception& exception) {
++    return SetLastError(PD_STATUS_STD_EXCEPTION, exception.what());
++  } catch (...) {
++    return SetLastError(PD_STATUS_UNKNOWN, "Unknown C++ exception");
++  }
++}
++
++template <typename T, typename Func>
++int SafeCallWithOutput(T* out, T failure_value, Func&& func) noexcept {
++  if (out != nullptr) {
++    *out = failure_value;
++  }
++  if (out == nullptr) {
++    return SetLastError(PD_STATUS_INVALID_ARGUMENT,
++                        "The pointer of out shouldn't be nullptr");
++  }
++  return SafeCall([&]() { *out = std::forward<Func>(func)(); });
++}
++
++}  // namespace capi_exp
++}  // namespace paddle_infer
+\ No newline at end of file
 diff --git a/paddle/fluid/inference/capi_exp/pd_predictor.cc b/paddle/fluid/inference/capi_exp/pd_predictor.cc
 index 8e193411bf..e4a26beb49 100644
 --- a/paddle/fluid/inference/capi_exp/pd_predictor.cc
