@@ -1,0 +1,1750 @@
+diff --git a/paddle/fluid/inference/capi_exp/pd_common.h b/paddle/fluid/inference/capi_exp/pd_common.h
+index 6581d09fab..a9200aa696 100644
+--- a/paddle/fluid/inference/capi_exp/pd_common.h
++++ b/paddle/fluid/inference/capi_exp/pd_common.h
+@@ -80,3 +80,30 @@ PD_ENUM(PD_DataType){
+     PD_DATA_UINT8,
+     PD_DATA_INT8,
+ };
++
++PD_ENUM(PD_StatusCode){PD_STATUS_UNKNOWN = -1,
++             PD_STATUS_OK = 0,
++             PD_STATUS_INVALID_ARGUMENT = 1,
++             PD_STATUS_PADDLE_EXCEPTION = 2,
++             PD_STATUS_STD_EXCEPTION = 3};
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++///
++/// \brief Return the status code from the last failed v2 C API call on the
++/// current thread.
++///
++PADDLE_CAPI_EXPORT extern int PD_GetLastErrorCode();
++
++///
++/// \brief Return the error message from the last failed v2 C API call on the
++/// current thread. The returned pointer is owned by Paddle and is valid until
++/// the next v2 C API call on the same thread.
++///
++PADDLE_CAPI_EXPORT extern const char* PD_GetLastError();
++
++#ifdef __cplusplus
++}  // extern "C"
++#endif
+diff --git a/paddle/fluid/inference/capi_exp/pd_config.cc b/paddle/fluid/inference/capi_exp/pd_config.cc
+index 1ab7c5fe72..a0d8f86ea6 100644
+--- a/paddle/fluid/inference/capi_exp/pd_config.cc
++++ b/paddle/fluid/inference/capi_exp/pd_config.cc
+@@ -15,6 +15,7 @@
+ #include "paddle/fluid/inference/capi_exp/pd_config.h"
+ 
+ #include "paddle/fluid/inference/api/paddle_inference_api.h"
++#include "paddle/fluid/inference/capi_exp/pd_error_internal.h"
+ #include "paddle/fluid/inference/capi_exp/pd_types.h"
+ #include "paddle/fluid/inference/capi_exp/utils_internal.h"
+ #include "paddle/fluid/platform/enforce.h"
+@@ -49,6 +50,64 @@ static Config::Precision ConvertToCxxPrecisionType(PD_PrecisionType precision) {
+   }
+ }
+ 
++namespace {
++
++void CheckCString(const char* value, const char* name) {
++  if (value == nullptr) {
++    throw std::invalid_argument(std::string("The pointer of ") + name +
++                                " shouldn't be nullptr");
++  }
++}
++
++void CheckCStringArray(size_t num, const char** array, const char* name) {
++  if (num != 0 && array == nullptr) {
++    throw std::invalid_argument(std::string("The pointer of ") + name +
++                                " shouldn't be nullptr");
++  }
++  for (size_t index = 0; index < num; ++index) {
++    CheckCString(array[index], name);
++  }
++}
++
++void CheckTrtDynamicShapeInfo(size_t tensor_num,
++                              const char** tensor_name,
++                              size_t* shapes_num,
++                              int32_t** min_shape,
++                              int32_t** max_shape,
++                              int32_t** optim_shape) {
++  CheckCStringArray(tensor_num, tensor_name, "tensor_name");
++  if (tensor_num != 0 && shapes_num == nullptr) {
++    throw std::invalid_argument(
++        "The pointer of shapes_num shouldn't be nullptr");
++  }
++  if (tensor_num != 0 && min_shape == nullptr) {
++    throw std::invalid_argument("The pointer of min_shape shouldn't be nullptr");
++  }
++  if (tensor_num != 0 && max_shape == nullptr) {
++    throw std::invalid_argument("The pointer of max_shape shouldn't be nullptr");
++  }
++  if (tensor_num != 0 && optim_shape == nullptr) {
++    throw std::invalid_argument(
++        "The pointer of optim_shape shouldn't be nullptr");
++  }
++  for (size_t index = 0; index < tensor_num; ++index) {
++    if (shapes_num[index] != 0 && min_shape[index] == nullptr) {
++      throw std::invalid_argument(
++          "The pointer of min_shape item shouldn't be nullptr");
++    }
++    if (shapes_num[index] != 0 && max_shape[index] == nullptr) {
++      throw std::invalid_argument(
++          "The pointer of max_shape item shouldn't be nullptr");
++    }
++    if (shapes_num[index] != 0 && optim_shape[index] == nullptr) {
++      throw std::invalid_argument(
++          "The pointer of optim_shape item shouldn't be nullptr");
++    }
++  }
++}
++
++}  // namespace
++
+ extern "C" {
+ __pd_give PD_Config* PD_ConfigCreate() {
+   return reinterpret_cast<PD_Config*>(new Config());
+@@ -570,4 +629,553 @@ void PD_ConfigUseOptimizedModel(__pd_keep PD_Config* pd_config, PD_Bool x) {
+   config->UseOptimizedModel(x);
+ }
+ 
++#define PD_CONFIG_SAFE_VOID(...) \
++  return paddle_infer::capi_exp::SafeCall([&]() { __VA_ARGS__; })
++
++#define PD_CONFIG_SAFE_OUT(out, failure_value, ...) \
++  return paddle_infer::capi_exp::SafeCallWithOutput( \
++      out, failure_value, [&]() { return __VA_ARGS__; })
++
++int PD_ConfigCreate2(__pd_give PD_Config** out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<PD_Config*>(nullptr), PD_ConfigCreate());
++}
++
++int PD_ConfigDestroy2(__pd_take PD_Config* pd_config) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigDestroy(pd_config));
++}
++
++int PD_ConfigSetModel2(__pd_keep PD_Config* pd_config,
++                       const char* prog_file_path,
++                       const char* params_file_path) {
++  PD_CONFIG_SAFE_VOID(
++      PD_ConfigSetModel(pd_config, prog_file_path, params_file_path));
++}
++
++int PD_ConfigSetProgFile2(__pd_keep PD_Config* pd_config,
++                          const char* prog_file_path) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigSetProgFile(pd_config, prog_file_path));
++}
++
++int PD_ConfigSetParamsFile2(__pd_keep PD_Config* pd_config,
++                            const char* params_file_path) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigSetParamsFile(pd_config, params_file_path));
++}
++
++int PD_ConfigSetOptimCacheDir2(__pd_keep PD_Config* pd_config,
++                               const char* opt_cache_dir) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigSetOptimCacheDir(pd_config, opt_cache_dir));
++}
++
++int PD_ConfigSetModelDir2(__pd_keep PD_Config* pd_config,
++                          const char* model_dir) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigSetModelDir(pd_config, model_dir));
++}
++
++int PD_ConfigGetModelDir2(__pd_keep PD_Config* pd_config, const char** out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<const char*>(nullptr),
++                     PD_ConfigGetModelDir(pd_config));
++}
++
++int PD_ConfigGetProgFile2(__pd_keep PD_Config* pd_config, const char** out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<const char*>(nullptr),
++                     PD_ConfigGetProgFile(pd_config));
++}
++
++int PD_ConfigGetParamsFile2(__pd_keep PD_Config* pd_config, const char** out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<const char*>(nullptr),
++                     PD_ConfigGetParamsFile(pd_config));
++}
++
++int PD_ConfigDisableFCPadding2(__pd_keep PD_Config* pd_config) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigDisableFCPadding(pd_config));
++}
++
++int PD_ConfigUseFcPadding2(__pd_keep PD_Config* pd_config, PD_Bool* out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<PD_Bool>(FALSE),
++                     PD_ConfigUseFcPadding(pd_config));
++}
++
++int PD_ConfigEnableUseGpu2(__pd_keep PD_Config* pd_config,
++                           uint64_t memory_pool_init_size_mb,
++                           int32_t device_id,
++                           PD_PrecisionType precision_mode) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigEnableUseGpu(
++      pd_config, memory_pool_init_size_mb, device_id, precision_mode));
++}
++
++int PD_ConfigDisableGpu2(__pd_keep PD_Config* pd_config) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigDisableGpu(pd_config));
++}
++
++int PD_ConfigUseGpu2(__pd_keep PD_Config* pd_config, PD_Bool* out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<PD_Bool>(FALSE),
++                     PD_ConfigUseGpu(pd_config));
++}
++
++int PD_ConfigEnableONNXRuntime2(__pd_keep PD_Config* pd_config) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigEnableONNXRuntime(pd_config));
++}
++
++int PD_ConfigDisableONNXRuntime2(__pd_keep PD_Config* pd_config) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigDisableONNXRuntime(pd_config));
++}
++
++int PD_ConfigONNXRuntimeEnabled2(__pd_keep PD_Config* pd_config,
++                                 PD_Bool* out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<PD_Bool>(FALSE),
++                     PD_ConfigONNXRuntimeEnabled(pd_config));
++}
++
++int PD_ConfigEnableORTOptimization2(__pd_keep PD_Config* pd_config) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigEnableORTOptimization(pd_config));
++}
++
++int PD_ConfigEnableXpu2(__pd_keep PD_Config* pd_config,
++                        int32_t l3_workspace_size,
++                        PD_Bool locked,
++                        PD_Bool autotune,
++                        const char* autotune_file,
++                        const char* precision,
++                        PD_Bool adaptive_seqlen,
++                        PD_Bool enable_multi_stream) {
++  PD_CONFIG_SAFE_VOID({
++    CheckCString(autotune_file, "autotune_file");
++    CheckCString(precision, "precision");
++    PD_ConfigEnableXpu(pd_config,
++                       l3_workspace_size,
++                       locked,
++                       autotune,
++                       autotune_file,
++                       precision,
++                       adaptive_seqlen,
++                       enable_multi_stream);
++  });
++}
++
++int PD_ConfigUseXpu2(__pd_keep PD_Config* pd_config, PD_Bool* out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<PD_Bool>(FALSE),
++                     PD_ConfigUseXpu(pd_config));
++}
++
++int PD_ConfigGpuDeviceId2(__pd_keep PD_Config* pd_config, int32_t* out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<int32_t>(0),
++                     PD_ConfigGpuDeviceId(pd_config));
++}
++
++int PD_ConfigXpuDeviceId2(__pd_keep PD_Config* pd_config, int32_t* out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<int32_t>(0),
++                     PD_ConfigXpuDeviceId(pd_config));
++}
++
++int PD_ConfigEnableCustomDevice2(__pd_keep PD_Config* pd_config,
++                                 char* device_type,
++                                 int32_t device_id,
++                                 PD_PrecisionType precision) {
++  PD_CONFIG_SAFE_VOID({
++    CheckCString(device_type, "device_type");
++    PD_ConfigEnableCustomDevice(pd_config, device_type, device_id, precision);
++  });
++}
++
++int PD_ConfigUseCustomDevice2(__pd_keep PD_Config* pd_config, PD_Bool* out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<PD_Bool>(FALSE),
++                     PD_ConfigUseCustomDevice(pd_config));
++}
++
++int PD_ConfigCustomDeviceId2(__pd_keep PD_Config* pd_config, int32_t* out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<int32_t>(0),
++                     PD_ConfigCustomDeviceId(pd_config));
++}
++
++int PD_ConfigCustomDeviceType2(__pd_keep PD_Config* pd_config, char** out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<char*>(nullptr),
++                     PD_ConfigCustomDeviceType(pd_config));
++}
++
++int PD_ConfigMemoryPoolInitSizeMb2(__pd_keep PD_Config* pd_config,
++                                   int32_t* out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<int32_t>(0),
++                     PD_ConfigMemoryPoolInitSizeMb(pd_config));
++}
++
++int PD_ConfigFractionOfGpuMemoryForPool2(__pd_keep PD_Config* pd_config,
++                                         float* out) {
++  PD_CONFIG_SAFE_OUT(out, 0.0f,
++                     PD_ConfigFractionOfGpuMemoryForPool(pd_config));
++}
++
++int PD_ConfigEnableCudnn2(__pd_keep PD_Config* pd_config) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigEnableCudnn(pd_config));
++}
++
++int PD_ConfigCudnnEnabled2(__pd_keep PD_Config* pd_config, PD_Bool* out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<PD_Bool>(FALSE),
++                     PD_ConfigCudnnEnabled(pd_config));
++}
++
++int PD_ConfigSwitchIrOptim2(__pd_keep PD_Config* pd_config, PD_Bool x) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigSwitchIrOptim(pd_config, x));
++}
++
++int PD_ConfigIrOptim2(__pd_keep PD_Config* pd_config, PD_Bool* out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<PD_Bool>(FALSE),
++                     PD_ConfigIrOptim(pd_config));
++}
++
++int PD_ConfigEnableTensorRtEngine2(__pd_keep PD_Config* pd_config,
++                                   int64_t workspace_size,
++                                   int32_t max_batch_size,
++                                   int32_t min_subgraph_size,
++                                   PD_PrecisionType precision,
++                                   PD_Bool use_static,
++                                   PD_Bool use_calib_mode) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigEnableTensorRtEngine(pd_config,
++                                                    workspace_size,
++                                                    max_batch_size,
++                                                    min_subgraph_size,
++                                                    precision,
++                                                    use_static,
++                                                    use_calib_mode));
++}
++
++int PD_ConfigTensorRtEngineEnabled2(__pd_keep PD_Config* pd_config,
++                                    PD_Bool* out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<PD_Bool>(FALSE),
++                     PD_ConfigTensorRtEngineEnabled(pd_config));
++}
++
++int PD_ConfigSetTrtDynamicShapeInfo2(__pd_keep PD_Config* pd_config,
++                                     size_t tensor_num,
++                                     const char** tensor_name,
++                                     size_t* shapes_num,
++                                     int32_t** min_shape,
++                                     int32_t** max_shape,
++                                     int32_t** optim_shape,
++                                     PD_Bool disable_trt_plugin_fp16) {
++  PD_CONFIG_SAFE_VOID({
++    CheckTrtDynamicShapeInfo(
++        tensor_num, tensor_name, shapes_num, min_shape, max_shape, optim_shape);
++    PD_ConfigSetTrtDynamicShapeInfo(pd_config,
++                                    tensor_num,
++                                    tensor_name,
++                                    shapes_num,
++                                    min_shape,
++                                    max_shape,
++                                    optim_shape,
++                                    disable_trt_plugin_fp16);
++  });
++}
++
++int PD_ConfigTensorRtDynamicShapeEnabled2(__pd_keep PD_Config* pd_config,
++                                          PD_Bool* out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<PD_Bool>(FALSE),
++                     PD_ConfigTensorRtDynamicShapeEnabled(pd_config));
++}
++
++int PD_ConfigEnableTunedTensorRtDynamicShape2(
++    __pd_keep PD_Config* pd_config,
++    const char* shape_range_info_path,
++    PD_Bool allow_build_at_runtime) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigEnableTunedTensorRtDynamicShape(
++      pd_config, shape_range_info_path, allow_build_at_runtime));
++}
++
++int PD_ConfigTunedTensorRtDynamicShape2(__pd_keep PD_Config* pd_config,
++                                        PD_Bool* out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<PD_Bool>(FALSE),
++                     PD_ConfigTunedTensorRtDynamicShape(pd_config));
++}
++
++int PD_ConfigTrtAllowBuildAtRuntime2(__pd_keep PD_Config* pd_config,
++                                     PD_Bool* out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<PD_Bool>(FALSE),
++                     PD_ConfigTrtAllowBuildAtRuntime(pd_config));
++}
++
++int PD_ConfigCollectShapeRangeInfo2(__pd_keep PD_Config* pd_config,
++                                    const char* shape_range_info_path) {
++  PD_CONFIG_SAFE_VOID(
++      PD_ConfigCollectShapeRangeInfo(pd_config, shape_range_info_path));
++}
++
++int PD_ConfigShapeRangeInfoPath2(__pd_keep PD_Config* pd_config,
++                                 const char** out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<const char*>(nullptr),
++                     PD_ConfigShapeRangeInfoPath(pd_config));
++}
++
++int PD_ConfigShapeRangeInfoCollected2(__pd_keep PD_Config* pd_config,
++                                      PD_Bool* out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<PD_Bool>(FALSE),
++                     PD_ConfigShapeRangeInfoCollected(pd_config));
++}
++
++int PD_ConfigDisableTensorRtOPs2(__pd_keep PD_Config* pd_config,
++                                 size_t ops_num,
++                                 const char** ops_name) {
++  PD_CONFIG_SAFE_VOID({
++    CheckCStringArray(ops_num, ops_name, "ops_name");
++    PD_ConfigDisableTensorRtOPs(pd_config, ops_num, ops_name);
++  });
++}
++
++int PD_ConfigEnableVarseqlen2(__pd_keep PD_Config* pd_config) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigEnableVarseqlen(pd_config));
++}
++
++int PD_ConfigTensorRtOssEnabled2(__pd_keep PD_Config* pd_config,
++                                 PD_Bool* out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<PD_Bool>(FALSE),
++                     PD_ConfigTensorRtOssEnabled(pd_config));
++}
++
++int PD_ConfigEnableTensorRtDla2(__pd_keep PD_Config* pd_config,
++                                int32_t dla_core) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigEnableTensorRtDla(pd_config, dla_core));
++}
++
++int PD_ConfigTensorRtDlaEnabled2(__pd_keep PD_Config* pd_config,
++                                 PD_Bool* out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<PD_Bool>(FALSE),
++                     PD_ConfigTensorRtDlaEnabled(pd_config));
++}
++
++int PD_ConfigSwitchIrDebug2(__pd_keep PD_Config* pd_config, PD_Bool x) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigSwitchIrDebug(pd_config, x));
++}
++
++int PD_ConfigEnableMKLDNN2(__pd_keep PD_Config* pd_config) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigEnableMKLDNN(pd_config));
++}
++
++int PD_ConfigEnableONEDNN2(__pd_keep PD_Config* pd_config) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigEnableONEDNN(pd_config));
++}
++
++int PD_ConfigSetMkldnnCacheCapacity2(__pd_keep PD_Config* pd_config,
++                                     int32_t capacity) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigSetMkldnnCacheCapacity(pd_config, capacity));
++}
++
++int PD_ConfigSetOnednnCacheCapacity2(__pd_keep PD_Config* pd_config,
++                                     int32_t capacity) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigSetOnednnCacheCapacity(pd_config, capacity));
++}
++
++int PD_ConfigMkldnnEnabled2(__pd_keep PD_Config* pd_config, PD_Bool* out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<PD_Bool>(FALSE),
++                     PD_ConfigMkldnnEnabled(pd_config));
++}
++
++int PD_ConfigOnednnEnabled2(__pd_keep PD_Config* pd_config, PD_Bool* out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<PD_Bool>(FALSE),
++                     PD_ConfigOnednnEnabled(pd_config));
++}
++
++int PD_ConfigSetCpuMathLibraryNumThreads2(
++    __pd_keep PD_Config* pd_config, int32_t cpu_math_library_num_threads) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigSetCpuMathLibraryNumThreads(
++      pd_config, cpu_math_library_num_threads));
++}
++
++int PD_ConfigGetCpuMathLibraryNumThreads2(__pd_keep PD_Config* pd_config,
++                                          int32_t* out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<int32_t>(0),
++                     PD_ConfigGetCpuMathLibraryNumThreads(pd_config));
++}
++
++int PD_ConfigSetMkldnnOp2(__pd_keep PD_Config* pd_config,
++                          size_t ops_num,
++                          const char** op_list) {
++  PD_CONFIG_SAFE_VOID({
++    CheckCStringArray(ops_num, op_list, "op_list");
++    PD_ConfigSetMkldnnOp(pd_config, ops_num, op_list);
++  });
++}
++
++int PD_ConfigEnableMkldnnBfloat162(__pd_keep PD_Config* pd_config) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigEnableMkldnnBfloat16(pd_config));
++}
++
++int PD_ConfigMkldnnBfloat16Enabled2(__pd_keep PD_Config* pd_config,
++                                    PD_Bool* out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<PD_Bool>(FALSE),
++                     PD_ConfigMkldnnBfloat16Enabled(pd_config));
++}
++
++int PD_ConfigSetOnednnOp2(__pd_keep PD_Config* pd_config,
++                          size_t ops_num,
++                          const char** op_list) {
++  PD_CONFIG_SAFE_VOID({
++    CheckCStringArray(ops_num, op_list, "op_list");
++    PD_ConfigSetOnednnOp(pd_config, ops_num, op_list);
++  });
++}
++
++int PD_ConfigEnableOnednnBfloat162(__pd_keep PD_Config* pd_config) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigEnableOnednnBfloat16(pd_config));
++}
++
++int PD_ConfigOnednnBfloat16Enabled2(__pd_keep PD_Config* pd_config,
++                                    PD_Bool* out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<PD_Bool>(FALSE),
++                     PD_ConfigOnednnBfloat16Enabled(pd_config));
++}
++
++int PD_ConfigSetBfloat16Op2(__pd_keep PD_Config* pd_config,
++                            size_t ops_num,
++                            const char** op_list) {
++  PD_CONFIG_SAFE_VOID({
++    CheckCStringArray(ops_num, op_list, "op_list");
++    PD_ConfigSetBfloat16Op(pd_config, ops_num, op_list);
++  });
++}
++
++int PD_ConfigEnableMkldnnInt82(__pd_keep PD_Config* pd_config) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigEnableMkldnnInt8(pd_config));
++}
++
++int PD_ConfigMkldnnInt8Enabled2(__pd_keep PD_Config* pd_config,
++                                PD_Bool* out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<PD_Bool>(FALSE),
++                     PD_ConfigMkldnnInt8Enabled(pd_config));
++}
++
++int PD_ConfigEnableOnednnInt82(__pd_keep PD_Config* pd_config) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigEnableOnednnInt8(pd_config));
++}
++
++int PD_ConfigOnednnInt8Enabled2(__pd_keep PD_Config* pd_config,
++                                PD_Bool* out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<PD_Bool>(FALSE),
++                     PD_ConfigOnednnInt8Enabled(pd_config));
++}
++
++int PD_ConfigEnableGpuMultiStream2(__pd_keep PD_Config* pd_config) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigEnableGpuMultiStream(pd_config));
++}
++
++int PD_ConfigThreadLocalStreamEnabled2(__pd_keep PD_Config* pd_config,
++                                       PD_Bool* out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<PD_Bool>(FALSE),
++                     PD_ConfigThreadLocalStreamEnabled(pd_config));
++}
++
++int PD_ConfigSetExecStream2(__pd_keep PD_Config* pd_config, void* stream) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigSetExecStream(pd_config, stream));
++}
++
++int PD_ConfigSetModelBuffer2(__pd_keep PD_Config* pd_config,
++                             const char* prog_buffer,
++                             size_t prog_buffer_size,
++                             const char* params_buffer,
++                             size_t params_buffer_size) {
++  PD_CONFIG_SAFE_VOID({
++    if (prog_buffer_size != 0) {
++      CheckCString(prog_buffer, "prog_buffer");
++    }
++    if (params_buffer_size != 0) {
++      CheckCString(params_buffer, "params_buffer");
++    }
++    PD_ConfigSetModelBuffer(pd_config,
++                            prog_buffer,
++                            prog_buffer_size,
++                            params_buffer,
++                            params_buffer_size);
++  });
++}
++
++int PD_ConfigModelFromMemory2(__pd_keep PD_Config* pd_config, PD_Bool* out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<PD_Bool>(FALSE),
++                     PD_ConfigModelFromMemory(pd_config));
++}
++
++int PD_ConfigEnableMemoryOptim2(__pd_keep PD_Config* pd_config, PD_Bool x) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigEnableMemoryOptim(pd_config, x));
++}
++
++int PD_ConfigMemoryOptimEnabled2(__pd_keep PD_Config* pd_config,
++                                 PD_Bool* out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<PD_Bool>(FALSE),
++                     PD_ConfigMemoryOptimEnabled(pd_config));
++}
++
++int PD_ConfigEnableProfile2(__pd_keep PD_Config* pd_config) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigEnableProfile(pd_config));
++}
++
++int PD_ConfigProfileEnabled2(__pd_keep PD_Config* pd_config, PD_Bool* out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<PD_Bool>(FALSE),
++                     PD_ConfigProfileEnabled(pd_config));
++}
++
++int PD_ConfigDisableGlogInfo2(__pd_keep PD_Config* pd_config) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigDisableGlogInfo(pd_config));
++}
++
++int PD_ConfigGlogInfoDisabled2(__pd_keep PD_Config* pd_config, PD_Bool* out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<PD_Bool>(FALSE),
++                     PD_ConfigGlogInfoDisabled(pd_config));
++}
++
++int PD_ConfigSetInvalid2(__pd_keep PD_Config* pd_config) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigSetInvalid(pd_config));
++}
++
++int PD_ConfigIsValid2(__pd_keep PD_Config* pd_config, PD_Bool* out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<PD_Bool>(FALSE),
++                     PD_ConfigIsValid(pd_config));
++}
++
++int PD_ConfigDeletePass2(__pd_keep PD_Config* pd_config, const char* pass) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigDeletePass(pd_config, pass));
++}
++
++int PD_ConfigInsertPass2(__pd_keep PD_Config* pd_config,
++                         size_t idx,
++                         const char* pass) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigInsertPass(pd_config, idx, pass));
++}
++
++int PD_ConfigAppendPass2(__pd_keep PD_Config* pd_config, const char* pass) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigAppendPass(pd_config, pass));
++}
++
++int PD_ConfigAllPasses2(__pd_keep PD_Config* pd_config,
++                        __pd_give PD_OneDimArrayCstr** out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<PD_OneDimArrayCstr*>(nullptr),
++                     PD_ConfigAllPasses(pd_config));
++}
++
++int PD_ConfigSummary2(__pd_keep PD_Config* pd_config, __pd_give PD_Cstr** out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<PD_Cstr*>(nullptr),
++                     PD_ConfigSummary(pd_config));
++}
++
++int PD_ConfigEnableNewExecutor2(__pd_keep PD_Config* pd_config, PD_Bool x) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigEnableNewExecutor(pd_config, x));
++}
++
++int PD_ConfigNewExecutorEnabled2(__pd_keep PD_Config* pd_config,
++                                 PD_Bool* out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<PD_Bool>(FALSE),
++                     PD_ConfigNewExecutorEnabled(pd_config));
++}
++
++int PD_ConfigEnableNewIR2(__pd_keep PD_Config* pd_config, PD_Bool x) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigEnableNewIR(pd_config, x));
++}
++
++int PD_ConfigNewIREnabled2(__pd_keep PD_Config* pd_config, PD_Bool* out) {
++  PD_CONFIG_SAFE_OUT(out, static_cast<PD_Bool>(FALSE),
++                     PD_ConfigNewIREnabled(pd_config));
++}
++
++int PD_ConfigUseOptimizedModel2(__pd_keep PD_Config* pd_config, PD_Bool x) {
++  PD_CONFIG_SAFE_VOID(PD_ConfigUseOptimizedModel(pd_config, x));
++}
++
++#undef PD_CONFIG_SAFE_OUT
++#undef PD_CONFIG_SAFE_VOID
++
+ }  // extern "C"
+diff --git a/paddle/fluid/inference/capi_exp/pd_config.h b/paddle/fluid/inference/capi_exp/pd_config.h
+index 90cd4c9678..b01ded641b 100644
+--- a/paddle/fluid/inference/capi_exp/pd_config.h
++++ b/paddle/fluid/inference/capi_exp/pd_config.h
+@@ -840,6 +840,221 @@ PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigNewIREnabled(
+ PADDLE_CAPI_EXPORT extern void PD_ConfigUseOptimizedModel(
+     __pd_keep PD_Config* pd_config, PD_Bool x);
+ 
++PADDLE_CAPI_EXPORT extern int PD_ConfigCreate2(__pd_give PD_Config** out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigDestroy2(__pd_take PD_Config* pd_config);
++PADDLE_CAPI_EXPORT extern int PD_ConfigSetModel2(
++    __pd_keep PD_Config* pd_config,
++    const char* prog_file_path,
++    const char* params_file_path);
++PADDLE_CAPI_EXPORT extern int PD_ConfigSetProgFile2(
++    __pd_keep PD_Config* pd_config, const char* prog_file_path);
++PADDLE_CAPI_EXPORT extern int PD_ConfigSetParamsFile2(
++    __pd_keep PD_Config* pd_config, const char* params_file_path);
++PADDLE_CAPI_EXPORT extern int PD_ConfigSetOptimCacheDir2(
++    __pd_keep PD_Config* pd_config, const char* opt_cache_dir);
++PADDLE_CAPI_EXPORT extern int PD_ConfigSetModelDir2(
++    __pd_keep PD_Config* pd_config, const char* model_dir);
++PADDLE_CAPI_EXPORT extern int PD_ConfigGetModelDir2(
++    __pd_keep PD_Config* pd_config, const char** out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigGetProgFile2(
++    __pd_keep PD_Config* pd_config, const char** out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigGetParamsFile2(
++    __pd_keep PD_Config* pd_config, const char** out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigDisableFCPadding2(
++    __pd_keep PD_Config* pd_config);
++PADDLE_CAPI_EXPORT extern int PD_ConfigUseFcPadding2(
++    __pd_keep PD_Config* pd_config, PD_Bool* out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigEnableUseGpu2(
++    __pd_keep PD_Config* pd_config,
++    uint64_t memory_pool_init_size_mb,
++    int32_t device_id,
++    PD_PrecisionType precision_mode);
++PADDLE_CAPI_EXPORT extern int PD_ConfigDisableGpu2(
++    __pd_keep PD_Config* pd_config);
++PADDLE_CAPI_EXPORT extern int PD_ConfigUseGpu2(
++    __pd_keep PD_Config* pd_config, PD_Bool* out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigEnableONNXRuntime2(
++    __pd_keep PD_Config* pd_config);
++PADDLE_CAPI_EXPORT extern int PD_ConfigDisableONNXRuntime2(
++    __pd_keep PD_Config* pd_config);
++PADDLE_CAPI_EXPORT extern int PD_ConfigONNXRuntimeEnabled2(
++    __pd_keep PD_Config* pd_config, PD_Bool* out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigEnableORTOptimization2(
++    __pd_keep PD_Config* pd_config);
++PADDLE_CAPI_EXPORT extern int PD_ConfigEnableXpu2(
++    __pd_keep PD_Config* pd_config,
++    int32_t l3_workspace_size,
++    PD_Bool locked,
++    PD_Bool autotune,
++    const char* autotune_file,
++    const char* precision,
++    PD_Bool adaptive_seqlen,
++    PD_Bool enable_multi_stream);
++PADDLE_CAPI_EXPORT extern int PD_ConfigUseXpu2(
++    __pd_keep PD_Config* pd_config, PD_Bool* out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigGpuDeviceId2(
++    __pd_keep PD_Config* pd_config, int32_t* out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigXpuDeviceId2(
++    __pd_keep PD_Config* pd_config, int32_t* out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigEnableCustomDevice2(
++    __pd_keep PD_Config* pd_config,
++    char* device_type,
++    int32_t device_id,
++    PD_PrecisionType precision);
++PADDLE_CAPI_EXPORT extern int PD_ConfigUseCustomDevice2(
++    __pd_keep PD_Config* pd_config, PD_Bool* out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigCustomDeviceId2(
++    __pd_keep PD_Config* pd_config, int32_t* out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigCustomDeviceType2(
++    __pd_keep PD_Config* pd_config, char** out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigMemoryPoolInitSizeMb2(
++    __pd_keep PD_Config* pd_config, int32_t* out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigFractionOfGpuMemoryForPool2(
++    __pd_keep PD_Config* pd_config, float* out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigEnableCudnn2(
++    __pd_keep PD_Config* pd_config);
++PADDLE_CAPI_EXPORT extern int PD_ConfigCudnnEnabled2(
++    __pd_keep PD_Config* pd_config, PD_Bool* out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigSwitchIrOptim2(
++    __pd_keep PD_Config* pd_config, PD_Bool x);
++PADDLE_CAPI_EXPORT extern int PD_ConfigIrOptim2(
++    __pd_keep PD_Config* pd_config, PD_Bool* out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigEnableTensorRtEngine2(
++    __pd_keep PD_Config* pd_config,
++    int64_t workspace_size,
++    int32_t max_batch_size,
++    int32_t min_subgraph_size,
++    PD_PrecisionType precision,
++    PD_Bool use_static,
++    PD_Bool use_calib_mode);
++PADDLE_CAPI_EXPORT extern int PD_ConfigTensorRtEngineEnabled2(
++    __pd_keep PD_Config* pd_config, PD_Bool* out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigSetTrtDynamicShapeInfo2(
++    __pd_keep PD_Config* pd_config,
++    size_t tensor_num,
++    const char** tensor_name,
++    size_t* shapes_num,
++    int32_t** min_shape,
++    int32_t** max_shape,
++    int32_t** optim_shape,
++    PD_Bool disable_trt_plugin_fp16);
++PADDLE_CAPI_EXPORT extern int PD_ConfigTensorRtDynamicShapeEnabled2(
++    __pd_keep PD_Config* pd_config, PD_Bool* out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigEnableTunedTensorRtDynamicShape2(
++    __pd_keep PD_Config* pd_config,
++    const char* shape_range_info_path,
++    PD_Bool allow_build_at_runtime);
++PADDLE_CAPI_EXPORT extern int PD_ConfigTunedTensorRtDynamicShape2(
++    __pd_keep PD_Config* pd_config, PD_Bool* out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigTrtAllowBuildAtRuntime2(
++    __pd_keep PD_Config* pd_config, PD_Bool* out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigCollectShapeRangeInfo2(
++    __pd_keep PD_Config* pd_config, const char* shape_range_info_path);
++PADDLE_CAPI_EXPORT extern int PD_ConfigShapeRangeInfoPath2(
++    __pd_keep PD_Config* pd_config, const char** out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigShapeRangeInfoCollected2(
++    __pd_keep PD_Config* pd_config, PD_Bool* out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigDisableTensorRtOPs2(
++    __pd_keep PD_Config* pd_config, size_t ops_num, const char** ops_name);
++PADDLE_CAPI_EXPORT extern int PD_ConfigEnableVarseqlen2(
++    __pd_keep PD_Config* pd_config);
++PADDLE_CAPI_EXPORT extern int PD_ConfigTensorRtOssEnabled2(
++    __pd_keep PD_Config* pd_config, PD_Bool* out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigEnableTensorRtDla2(
++    __pd_keep PD_Config* pd_config, int32_t dla_core);
++PADDLE_CAPI_EXPORT extern int PD_ConfigTensorRtDlaEnabled2(
++    __pd_keep PD_Config* pd_config, PD_Bool* out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigSwitchIrDebug2(
++    __pd_keep PD_Config* pd_config, PD_Bool x);
++PADDLE_CAPI_EXPORT extern int PD_ConfigEnableMKLDNN2(
++    __pd_keep PD_Config* pd_config);
++PADDLE_CAPI_EXPORT extern int PD_ConfigEnableONEDNN2(
++    __pd_keep PD_Config* pd_config);
++PADDLE_CAPI_EXPORT extern int PD_ConfigSetMkldnnCacheCapacity2(
++    __pd_keep PD_Config* pd_config, int32_t capacity);
++PADDLE_CAPI_EXPORT extern int PD_ConfigSetOnednnCacheCapacity2(
++    __pd_keep PD_Config* pd_config, int32_t capacity);
++PADDLE_CAPI_EXPORT extern int PD_ConfigMkldnnEnabled2(
++    __pd_keep PD_Config* pd_config, PD_Bool* out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigOnednnEnabled2(
++    __pd_keep PD_Config* pd_config, PD_Bool* out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigSetCpuMathLibraryNumThreads2(
++    __pd_keep PD_Config* pd_config, int32_t cpu_math_library_num_threads);
++PADDLE_CAPI_EXPORT extern int PD_ConfigGetCpuMathLibraryNumThreads2(
++    __pd_keep PD_Config* pd_config, int32_t* out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigSetMkldnnOp2(
++    __pd_keep PD_Config* pd_config, size_t ops_num, const char** op_list);
++PADDLE_CAPI_EXPORT extern int PD_ConfigEnableMkldnnBfloat162(
++    __pd_keep PD_Config* pd_config);
++PADDLE_CAPI_EXPORT extern int PD_ConfigMkldnnBfloat16Enabled2(
++    __pd_keep PD_Config* pd_config, PD_Bool* out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigSetOnednnOp2(
++    __pd_keep PD_Config* pd_config, size_t ops_num, const char** op_list);
++PADDLE_CAPI_EXPORT extern int PD_ConfigEnableOnednnBfloat162(
++    __pd_keep PD_Config* pd_config);
++PADDLE_CAPI_EXPORT extern int PD_ConfigOnednnBfloat16Enabled2(
++    __pd_keep PD_Config* pd_config, PD_Bool* out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigSetBfloat16Op2(
++    __pd_keep PD_Config* pd_config, size_t ops_num, const char** op_list);
++PADDLE_CAPI_EXPORT extern int PD_ConfigEnableMkldnnInt82(
++    __pd_keep PD_Config* pd_config);
++PADDLE_CAPI_EXPORT extern int PD_ConfigMkldnnInt8Enabled2(
++    __pd_keep PD_Config* pd_config, PD_Bool* out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigEnableOnednnInt82(
++    __pd_keep PD_Config* pd_config);
++PADDLE_CAPI_EXPORT extern int PD_ConfigOnednnInt8Enabled2(
++    __pd_keep PD_Config* pd_config, PD_Bool* out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigEnableGpuMultiStream2(
++    __pd_keep PD_Config* pd_config);
++PADDLE_CAPI_EXPORT extern int PD_ConfigThreadLocalStreamEnabled2(
++    __pd_keep PD_Config* pd_config, PD_Bool* out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigSetExecStream2(
++    __pd_keep PD_Config* pd_config, void* stream);
++PADDLE_CAPI_EXPORT extern int PD_ConfigSetModelBuffer2(
++    __pd_keep PD_Config* pd_config,
++    const char* prog_buffer,
++    size_t prog_buffer_size,
++    const char* params_buffer,
++    size_t params_buffer_size);
++PADDLE_CAPI_EXPORT extern int PD_ConfigModelFromMemory2(
++    __pd_keep PD_Config* pd_config, PD_Bool* out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigEnableMemoryOptim2(
++    __pd_keep PD_Config* pd_config, PD_Bool x);
++PADDLE_CAPI_EXPORT extern int PD_ConfigMemoryOptimEnabled2(
++    __pd_keep PD_Config* pd_config, PD_Bool* out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigEnableProfile2(
++    __pd_keep PD_Config* pd_config);
++PADDLE_CAPI_EXPORT extern int PD_ConfigProfileEnabled2(
++    __pd_keep PD_Config* pd_config, PD_Bool* out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigDisableGlogInfo2(
++    __pd_keep PD_Config* pd_config);
++PADDLE_CAPI_EXPORT extern int PD_ConfigGlogInfoDisabled2(
++    __pd_keep PD_Config* pd_config, PD_Bool* out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigSetInvalid2(
++    __pd_keep PD_Config* pd_config);
++PADDLE_CAPI_EXPORT extern int PD_ConfigIsValid2(
++    __pd_keep PD_Config* pd_config, PD_Bool* out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigDeletePass2(
++    __pd_keep PD_Config* pd_config, const char* pass);
++PADDLE_CAPI_EXPORT extern int PD_ConfigInsertPass2(
++    __pd_keep PD_Config* pd_config, size_t idx, const char* pass);
++PADDLE_CAPI_EXPORT extern int PD_ConfigAppendPass2(
++    __pd_keep PD_Config* pd_config, const char* pass);
++PADDLE_CAPI_EXPORT extern int PD_ConfigAllPasses2(
++    __pd_keep PD_Config* pd_config, __pd_give PD_OneDimArrayCstr** out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigSummary2(
++    __pd_keep PD_Config* pd_config, __pd_give PD_Cstr** out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigEnableNewExecutor2(
++    __pd_keep PD_Config* pd_config, PD_Bool x);
++PADDLE_CAPI_EXPORT extern int PD_ConfigNewExecutorEnabled2(
++    __pd_keep PD_Config* pd_config, PD_Bool* out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigEnableNewIR2(
++    __pd_keep PD_Config* pd_config, PD_Bool x);
++PADDLE_CAPI_EXPORT extern int PD_ConfigNewIREnabled2(
++    __pd_keep PD_Config* pd_config, PD_Bool* out);
++PADDLE_CAPI_EXPORT extern int PD_ConfigUseOptimizedModel2(
++    __pd_keep PD_Config* pd_config, PD_Bool x);
++
+ #ifdef __cplusplus
+ }  // extern "C"
+ #endif
+diff --git a/paddle/fluid/inference/capi_exp/pd_predictor.cc b/paddle/fluid/inference/capi_exp/pd_predictor.cc
+index 8e193411bf..e4a26beb49 100644
+--- a/paddle/fluid/inference/capi_exp/pd_predictor.cc
++++ b/paddle/fluid/inference/capi_exp/pd_predictor.cc
+@@ -16,6 +16,7 @@
+ 
+ #include "paddle/fluid/inference/api/paddle_inference_api.h"
+ #include "paddle/fluid/inference/capi_exp/pd_config.h"
++#include "paddle/fluid/inference/capi_exp/pd_error_internal.h"
+ #include "paddle/fluid/inference/capi_exp/pd_types.h"
+ #include "paddle/fluid/inference/capi_exp/pd_utils.h"
+ #include "paddle/fluid/inference/capi_exp/types_internal.h"
+@@ -42,6 +43,14 @@ __pd_give PD_Predictor* PD_PredictorCreate(__pd_take PD_Config* pd_config) {
+   return pd_predictor;
+ }
+ 
++int PD_PredictorCreate2(__pd_take PD_Config* pd_config,
++                        __pd_give PD_Predictor** out) {
++  return paddle_infer::capi_exp::SafeCallWithOutput(
++      out, static_cast<PD_Predictor*>(nullptr), [&]() {
++        return PD_PredictorCreate(pd_config);
++      });
++}
++
+ __pd_give PD_Predictor* PD_PredictorClone(
+     __pd_keep PD_Predictor* pd_predictor) {
+   CHECK_AND_CONVERT_PD_PREDICTOR;
+@@ -50,6 +59,14 @@ __pd_give PD_Predictor* PD_PredictorClone(
+   return new_predictor;
+ }
+ 
++int PD_PredictorClone2(__pd_keep PD_Predictor* pd_predictor,
++                       __pd_give PD_Predictor** out) {
++  return paddle_infer::capi_exp::SafeCallWithOutput(
++      out, static_cast<PD_Predictor*>(nullptr), [&]() {
++        return PD_PredictorClone(pd_predictor);
++      });
++}
++
+ __pd_give PD_OneDimArrayCstr* PD_PredictorGetInputNames(
+     __pd_keep PD_Predictor* pd_predictor) {
+   CHECK_AND_CONVERT_PD_PREDICTOR;
+@@ -57,6 +74,14 @@ __pd_give PD_OneDimArrayCstr* PD_PredictorGetInputNames(
+   return paddle_infer::CvtVecToOneDimArrayCstr(names);
+ }
+ 
++int PD_PredictorGetInputNames2(__pd_keep PD_Predictor* pd_predictor,
++                               __pd_give PD_OneDimArrayCstr** out) {
++  return paddle_infer::capi_exp::SafeCallWithOutput(
++      out, static_cast<PD_OneDimArrayCstr*>(nullptr), [&]() {
++        return PD_PredictorGetInputNames(pd_predictor);
++      });
++}
++
+ __pd_give PD_IOInfos* PD_PredictorGetInputInfos(
+     __pd_keep PD_Predictor* pd_predictor) {
+   CHECK_AND_CONVERT_PD_PREDICTOR;
+@@ -81,6 +106,14 @@ __pd_give PD_IOInfos* PD_PredictorGetInputInfos(
+   return input_infos;
+ }
+ 
++int PD_PredictorGetInputInfos2(__pd_keep PD_Predictor* pd_predictor,
++                               __pd_give PD_IOInfos** out) {
++  return paddle_infer::capi_exp::SafeCallWithOutput(
++      out, static_cast<PD_IOInfos*>(nullptr), [&]() {
++        return PD_PredictorGetInputInfos(pd_predictor);
++      });
++}
++
+ __pd_give PD_OneDimArrayCstr* PD_PredictorGetOutputNames(
+     __pd_keep PD_Predictor* pd_predictor) {
+   CHECK_AND_CONVERT_PD_PREDICTOR;
+@@ -88,6 +121,14 @@ __pd_give PD_OneDimArrayCstr* PD_PredictorGetOutputNames(
+   return paddle_infer::CvtVecToOneDimArrayCstr(names);
+ }
+ 
++int PD_PredictorGetOutputNames2(__pd_keep PD_Predictor* pd_predictor,
++                                __pd_give PD_OneDimArrayCstr** out) {
++  return paddle_infer::capi_exp::SafeCallWithOutput(
++      out, static_cast<PD_OneDimArrayCstr*>(nullptr), [&]() {
++        return PD_PredictorGetOutputNames(pd_predictor);
++      });
++}
++
+ __pd_give PD_IOInfos* PD_PredictorGetOutputInfos(
+     __pd_keep PD_Predictor* pd_predictor) {
+   CHECK_AND_CONVERT_PD_PREDICTOR;
+@@ -113,15 +154,39 @@ __pd_give PD_IOInfos* PD_PredictorGetOutputInfos(
+   return output_infos;
+ }
+ 
++int PD_PredictorGetOutputInfos2(__pd_keep PD_Predictor* pd_predictor,
++                                __pd_give PD_IOInfos** out) {
++  return paddle_infer::capi_exp::SafeCallWithOutput(
++      out, static_cast<PD_IOInfos*>(nullptr), [&]() {
++        return PD_PredictorGetOutputInfos(pd_predictor);
++      });
++}
++
+ size_t PD_PredictorGetInputNum(__pd_keep PD_Predictor* pd_predictor) {
+   CHECK_AND_CONVERT_PD_PREDICTOR;
+   return predictor->GetInputNames().size();
+ }
+ 
++int PD_PredictorGetInputNum2(__pd_keep PD_Predictor* pd_predictor,
++                             size_t* out) {
++  return paddle_infer::capi_exp::SafeCallWithOutput(
++      out, static_cast<size_t>(0), [&]() {
++        return PD_PredictorGetInputNum(pd_predictor);
++      });
++}
++
+ size_t PD_PredictorGetOutputNum(__pd_keep PD_Predictor* pd_predictor) {
+   CHECK_AND_CONVERT_PD_PREDICTOR;
+   return predictor->GetOutputNames().size();
+ }
++
++int PD_PredictorGetOutputNum2(__pd_keep PD_Predictor* pd_predictor,
++                              size_t* out) {
++  return paddle_infer::capi_exp::SafeCallWithOutput(
++      out, static_cast<size_t>(0), [&]() {
++        return PD_PredictorGetOutputNum(pd_predictor);
++      });
++}
+ __pd_give PD_Tensor* PD_PredictorGetInputHandle(
+     __pd_keep PD_Predictor* pd_predictor, const char* name) {
+   CHECK_AND_CONVERT_PD_PREDICTOR;
+@@ -130,6 +195,18 @@ __pd_give PD_Tensor* PD_PredictorGetInputHandle(
+   return pd_tensor;
+ }
+ 
++int PD_PredictorGetInputHandle2(__pd_keep PD_Predictor* pd_predictor,
++                                const char* name,
++                                __pd_give PD_Tensor** out) {
++  return paddle_infer::capi_exp::SafeCallWithOutput(
++      out, static_cast<PD_Tensor*>(nullptr), [&]() {
++        if (name == nullptr) {
++          throw std::invalid_argument("The pointer of name shouldn't be nullptr");
++        }
++        return PD_PredictorGetInputHandle(pd_predictor, name);
++      });
++}
++
+ __pd_give PD_Tensor* PD_PredictorGetOutputHandle(
+     __pd_keep PD_Predictor* pd_predictor, const char* name) {
+   CHECK_AND_CONVERT_PD_PREDICTOR;
+@@ -138,28 +215,71 @@ __pd_give PD_Tensor* PD_PredictorGetOutputHandle(
+   return pd_tensor;
+ }
+ 
++int PD_PredictorGetOutputHandle2(__pd_keep PD_Predictor* pd_predictor,
++                                 const char* name,
++                                 __pd_give PD_Tensor** out) {
++  return paddle_infer::capi_exp::SafeCallWithOutput(
++      out, static_cast<PD_Tensor*>(nullptr), [&]() {
++        if (name == nullptr) {
++          throw std::invalid_argument("The pointer of name shouldn't be nullptr");
++        }
++        return PD_PredictorGetOutputHandle(pd_predictor, name);
++      });
++}
++
+ PD_Bool PD_PredictorRun(__pd_keep PD_Predictor* pd_predictor) {
+   CHECK_AND_CONVERT_PD_PREDICTOR;
+   return predictor->Run();  // NOLINT
+ }
+ 
++int PD_PredictorRun2(__pd_keep PD_Predictor* pd_predictor, PD_Bool* out) {
++  return paddle_infer::capi_exp::SafeCallWithOutput(
++      out, static_cast<PD_Bool>(FALSE), [&]() {
++        return PD_PredictorRun(pd_predictor);
++      });
++}
++
+ void PD_PredictorClearIntermediateTensor(__pd_keep PD_Predictor* pd_predictor) {
+   CHECK_AND_CONVERT_PD_PREDICTOR;
+   predictor->ClearIntermediateTensor();
+ }
+ 
++int PD_PredictorClearIntermediateTensor2(
++    __pd_keep PD_Predictor* pd_predictor) {
++  return paddle_infer::capi_exp::SafeCall(
++      [&]() { PD_PredictorClearIntermediateTensor(pd_predictor); });
++}
++
+ uint64_t PD_PredictorTryShrinkMemory(__pd_keep PD_Predictor* pd_predictor) {
+   CHECK_AND_CONVERT_PD_PREDICTOR;
+   return predictor->TryShrinkMemory();
+ }
+ 
++int PD_PredictorTryShrinkMemory2(__pd_keep PD_Predictor* pd_predictor,
++                                 uint64_t* out) {
++  return paddle_infer::capi_exp::SafeCallWithOutput(
++      out, static_cast<uint64_t>(0), [&]() {
++        return PD_PredictorTryShrinkMemory(pd_predictor);
++      });
++}
++
+ void PD_PredictorDestroy(__pd_take PD_Predictor* pd_predictor) {
+   delete pd_predictor;
+ }
+ 
++int PD_PredictorDestroy2(__pd_take PD_Predictor* pd_predictor) {
++  return paddle_infer::capi_exp::SafeCall(
++      [&]() { PD_PredictorDestroy(pd_predictor); });
++}
++
+ const char* PD_GetVersion() {
+   static std::string version = paddle_infer::GetVersion();
+   return version.c_str();
+ }
+ 
++int PD_GetVersion2(const char** out) {
++  return paddle_infer::capi_exp::SafeCallWithOutput(
++      out, static_cast<const char*>(nullptr), [&]() { return PD_GetVersion(); });
++}
++
+ }  // extern "C"
+diff --git a/paddle/fluid/inference/capi_exp/pd_predictor.h b/paddle/fluid/inference/capi_exp/pd_predictor.h
+index f17d78f915..d23c71fc85 100644
+--- a/paddle/fluid/inference/capi_exp/pd_predictor.h
++++ b/paddle/fluid/inference/capi_exp/pd_predictor.h
+@@ -44,6 +44,8 @@ extern "C" {
+ ///
+ PADDLE_CAPI_EXPORT extern __pd_give PD_Predictor* PD_PredictorCreate(
+     __pd_take PD_Config* pd_config);
++PADDLE_CAPI_EXPORT extern int PD_PredictorCreate2(
++    __pd_take PD_Config* pd_config, __pd_give PD_Predictor** out);
+ ///
+ /// \brief Clone a new Predictor
+ ///
+@@ -52,6 +54,8 @@ PADDLE_CAPI_EXPORT extern __pd_give PD_Predictor* PD_PredictorCreate(
+ ///
+ PADDLE_CAPI_EXPORT extern __pd_give PD_Predictor* PD_PredictorClone(
+     __pd_keep PD_Predictor* pd_predictor);
++PADDLE_CAPI_EXPORT extern int PD_PredictorClone2(
++    __pd_keep PD_Predictor* pd_predictor, __pd_give PD_Predictor** out);
+ ///
+ /// \brief Get the input names
+ ///
+@@ -60,6 +64,8 @@ PADDLE_CAPI_EXPORT extern __pd_give PD_Predictor* PD_PredictorClone(
+ ///
+ PADDLE_CAPI_EXPORT extern __pd_give PD_OneDimArrayCstr*
+ PD_PredictorGetInputNames(__pd_keep PD_Predictor* pd_predictor);
++PADDLE_CAPI_EXPORT extern int PD_PredictorGetInputNames2(
++    __pd_keep PD_Predictor* pd_predictor, __pd_give PD_OneDimArrayCstr** out);
+ ///
+ /// \brief Get the input infos(name/shape/dtype)
+ ///
+@@ -68,6 +74,8 @@ PD_PredictorGetInputNames(__pd_keep PD_Predictor* pd_predictor);
+ ///
+ PADDLE_CAPI_EXPORT extern __pd_give PD_IOInfos* PD_PredictorGetInputInfos(
+     __pd_keep PD_Predictor* pd_predictor);
++PADDLE_CAPI_EXPORT extern int PD_PredictorGetInputInfos2(
++    __pd_keep PD_Predictor* pd_predictor, __pd_give PD_IOInfos** out);
+ ///
+ /// \brief Get the output names
+ ///
+@@ -76,6 +84,8 @@ PADDLE_CAPI_EXPORT extern __pd_give PD_IOInfos* PD_PredictorGetInputInfos(
+ ///
+ PADDLE_CAPI_EXPORT extern __pd_give PD_OneDimArrayCstr*
+ PD_PredictorGetOutputNames(__pd_keep PD_Predictor* pd_predictor);
++PADDLE_CAPI_EXPORT extern int PD_PredictorGetOutputNames2(
++    __pd_keep PD_Predictor* pd_predictor, __pd_give PD_OneDimArrayCstr** out);
+ ///
+ /// \brief Get the output infos(name/shape/dtype)
+ ///
+@@ -84,6 +94,8 @@ PD_PredictorGetOutputNames(__pd_keep PD_Predictor* pd_predictor);
+ ///
+ PADDLE_CAPI_EXPORT extern __pd_give PD_IOInfos* PD_PredictorGetOutputInfos(
+     __pd_keep PD_Predictor* pd_predictor);
++PADDLE_CAPI_EXPORT extern int PD_PredictorGetOutputInfos2(
++    __pd_keep PD_Predictor* pd_predictor, __pd_give PD_IOInfos** out);
+ ///
+ /// \brief Get the input number
+ ///
+@@ -92,6 +104,8 @@ PADDLE_CAPI_EXPORT extern __pd_give PD_IOInfos* PD_PredictorGetOutputInfos(
+ ///
+ PADDLE_CAPI_EXPORT extern size_t PD_PredictorGetInputNum(
+     __pd_keep PD_Predictor* pd_predictor);
++PADDLE_CAPI_EXPORT extern int PD_PredictorGetInputNum2(
++    __pd_keep PD_Predictor* pd_predictor, size_t* out);
+ 
+ ///
+ /// \brief Get the output number
+@@ -101,6 +115,8 @@ PADDLE_CAPI_EXPORT extern size_t PD_PredictorGetInputNum(
+ ///
+ PADDLE_CAPI_EXPORT extern size_t PD_PredictorGetOutputNum(
+     __pd_keep PD_Predictor* pd_predictor);
++PADDLE_CAPI_EXPORT extern int PD_PredictorGetOutputNum2(
++    __pd_keep PD_Predictor* pd_predictor, size_t* out);
+ 
+ ///
+ /// \brief Get the Input Tensor object
+@@ -111,6 +127,10 @@ PADDLE_CAPI_EXPORT extern size_t PD_PredictorGetOutputNum(
+ ///
+ PADDLE_CAPI_EXPORT extern __pd_give PD_Tensor* PD_PredictorGetInputHandle(
+     __pd_keep PD_Predictor* pd_predictor, const char* name);
++PADDLE_CAPI_EXPORT extern int PD_PredictorGetInputHandle2(
++    __pd_keep PD_Predictor* pd_predictor,
++    const char* name,
++    __pd_give PD_Tensor** out);
+ 
+ ///
+ /// \brief Get the Output Tensor object
+@@ -121,6 +141,10 @@ PADDLE_CAPI_EXPORT extern __pd_give PD_Tensor* PD_PredictorGetInputHandle(
+ ///
+ PADDLE_CAPI_EXPORT extern __pd_give PD_Tensor* PD_PredictorGetOutputHandle(
+     __pd_keep PD_Predictor* pd_predictor, const char* name);
++PADDLE_CAPI_EXPORT extern int PD_PredictorGetOutputHandle2(
++    __pd_keep PD_Predictor* pd_predictor,
++    const char* name,
++    __pd_give PD_Tensor** out);
+ 
+ ///
+ /// \brief Run the prediction engine
+@@ -130,6 +154,8 @@ PADDLE_CAPI_EXPORT extern __pd_give PD_Tensor* PD_PredictorGetOutputHandle(
+ ///
+ PADDLE_CAPI_EXPORT extern PD_Bool PD_PredictorRun(
+     __pd_keep PD_Predictor* pd_predictor);
++PADDLE_CAPI_EXPORT extern int PD_PredictorRun2(
++    __pd_keep PD_Predictor* pd_predictor, PD_Bool* out);
+ 
+ /// \brief Clear the intermediate tensors of the predictor
+ ///
+@@ -137,6 +163,8 @@ PADDLE_CAPI_EXPORT extern PD_Bool PD_PredictorRun(
+ ///
+ PADDLE_CAPI_EXPORT extern void PD_PredictorClearIntermediateTensor(
+     __pd_keep PD_Predictor* pd_predictor);
++PADDLE_CAPI_EXPORT extern int PD_PredictorClearIntermediateTensor2(
++    __pd_keep PD_Predictor* pd_predictor);
+ 
+ ///
+ /// \brief Release all tmp tensor to compress the size of the memory pool.
+@@ -150,6 +178,8 @@ PADDLE_CAPI_EXPORT extern void PD_PredictorClearIntermediateTensor(
+ ///
+ PADDLE_CAPI_EXPORT extern uint64_t PD_PredictorTryShrinkMemory(
+     __pd_keep PD_Predictor* pd_predictor);
++PADDLE_CAPI_EXPORT extern int PD_PredictorTryShrinkMemory2(
++    __pd_keep PD_Predictor* pd_predictor, uint64_t* out);
+ 
+ ///
+ /// \brief Destroy a predictor object
+@@ -158,6 +188,8 @@ PADDLE_CAPI_EXPORT extern uint64_t PD_PredictorTryShrinkMemory(
+ ///
+ PADDLE_CAPI_EXPORT extern void PD_PredictorDestroy(
+     __pd_take PD_Predictor* pd_predictor);
++PADDLE_CAPI_EXPORT extern int PD_PredictorDestroy2(
++    __pd_take PD_Predictor* pd_predictor);
+ 
+ ///
+ /// \brief Get version info.
+@@ -165,6 +197,7 @@ PADDLE_CAPI_EXPORT extern void PD_PredictorDestroy(
+ /// \return version
+ ///
+ PADDLE_CAPI_EXPORT extern const char* PD_GetVersion();
++PADDLE_CAPI_EXPORT extern int PD_GetVersion2(const char** out);
+ 
+ #ifdef __cplusplus
+ }  // extern "C"
+diff --git a/paddle/fluid/inference/capi_exp/pd_tensor.cc b/paddle/fluid/inference/capi_exp/pd_tensor.cc
+index e21e3dd49a..0d241b56c1 100644
+--- a/paddle/fluid/inference/capi_exp/pd_tensor.cc
++++ b/paddle/fluid/inference/capi_exp/pd_tensor.cc
+@@ -15,6 +15,7 @@
+ #include "paddle/fluid/inference/capi_exp/pd_tensor.h"
+ 
+ #include "paddle/fluid/inference/api/paddle_inference_api.h"
++#include "paddle/fluid/inference/capi_exp/pd_error_internal.h"
+ #include "paddle/fluid/inference/capi_exp/pd_types.h"
+ #include "paddle/fluid/inference/capi_exp/pd_utils.h"
+ #include "paddle/fluid/inference/capi_exp/types_internal.h"
+@@ -31,6 +32,11 @@
+ extern "C" {
+ 
+ void PD_TensorDestroy(__pd_take PD_Tensor* pd_tensor) { delete pd_tensor; }
++int PD_TensorDestroy2(__pd_take PD_Tensor* pd_tensor) {
++  return paddle_infer::capi_exp::SafeCall(
++      [&]() { PD_TensorDestroy(pd_tensor); });
++}
++
+ void PD_TensorReshape(__pd_keep PD_Tensor* pd_tensor,
+                       size_t shape_size,
+                       int32_t* shape) {
+@@ -42,6 +48,17 @@ void PD_TensorReshape(__pd_keep PD_Tensor* pd_tensor,
+   tensor->Reshape(shapes);
+ }
+ 
++int PD_TensorReshape2(__pd_keep PD_Tensor* pd_tensor,
++                      size_t shape_size,
++                      int32_t* shape) {
++  return paddle_infer::capi_exp::SafeCall([&]() {
++    if (shape_size != 0 && shape == nullptr) {
++      throw std::invalid_argument("The pointer of shape shouldn't be nullptr");
++    }
++    PD_TensorReshape(pd_tensor, shape_size, shape);
++  });
++}
++
+ #define REPEAT_ALL_DATA_TYPE(func)                             \
+   func(float, Float) func(int64_t, Int64) func(int32_t, Int32) \
+       func(uint8_t, Uint8) func(int8_t, Int8)
+@@ -55,6 +72,17 @@ void PD_TensorReshape(__pd_keep PD_Tensor* pd_tensor,
+ REPEAT_ALL_DATA_TYPE(PD_TENSOR_MUTABLE_DATA_IMPL)
+ #undef PD_TENSOR_MUTABLE_DATA_IMPL
+ 
++#define PD_TENSOR_MUTABLE_DATA2_IMPL(type, Type)                        \
++  int PD_TensorMutableData##Type##2(                                    \
++      __pd_keep PD_Tensor* pd_tensor, PD_PlaceType place, type** out) { \
++    return paddle_infer::capi_exp::SafeCallWithOutput(                  \
++        out, static_cast<type*>(nullptr), [&]() {                       \
++          return PD_TensorMutableData##Type(pd_tensor, place);          \
++        });                                                            \
++  }
++REPEAT_ALL_DATA_TYPE(PD_TENSOR_MUTABLE_DATA2_IMPL)
++#undef PD_TENSOR_MUTABLE_DATA2_IMPL
++
+ #define PD_TENSOR_DATA_IMPL(type, Type)                                        \
+   type* PD_TensorData##Type(                                                   \
+       __pd_keep PD_Tensor* pd_tensor, PD_PlaceType* place, int32_t* size) {    \
+@@ -75,6 +103,25 @@ REPEAT_ALL_DATA_TYPE(PD_TENSOR_MUTABLE_DATA_IMPL)
+ REPEAT_ALL_DATA_TYPE(PD_TENSOR_DATA_IMPL)
+ #undef PD_TENSOR_DATA_IMPL
+ 
++#define PD_TENSOR_DATA2_IMPL(type, Type)                                      \
++  int PD_TensorData##Type##2(__pd_keep PD_Tensor* pd_tensor,                  \
++                             PD_PlaceType* place,                            \
++                             int32_t* size,                                  \
++                             type** out) {                                   \
++    if (place != nullptr) {                                                   \
++      *place = PD_PLACE_UNK;                                                  \
++    }                                                                         \
++    if (size != nullptr) {                                                    \
++      *size = 0;                                                              \
++    }                                                                         \
++    return paddle_infer::capi_exp::SafeCallWithOutput(                        \
++        out, static_cast<type*>(nullptr), [&]() {                             \
++          return PD_TensorData##Type(pd_tensor, place, size);                 \
++        });                                                                  \
++  }
++REPEAT_ALL_DATA_TYPE(PD_TENSOR_DATA2_IMPL)
++#undef PD_TENSOR_DATA2_IMPL
++
+ #define PD_TENSOR_COPY_FROM_CPU_IMPL(type, Type)                  \
+   void PD_TensorCopyFromCpu##Type(__pd_keep PD_Tensor* pd_tensor, \
+                                   const type* data) {             \
+@@ -84,6 +131,20 @@ REPEAT_ALL_DATA_TYPE(PD_TENSOR_DATA_IMPL)
+ REPEAT_ALL_DATA_TYPE(PD_TENSOR_COPY_FROM_CPU_IMPL)
+ #undef PD_TENSOR_COPY_FROM_CPU_IMPL
+ 
++#define PD_TENSOR_COPY_FROM_CPU2_IMPL(type, Type)                    \
++  int PD_TensorCopyFromCpu##Type##2(__pd_keep PD_Tensor* pd_tensor,  \
++                                    const type* data) {              \
++    return paddle_infer::capi_exp::SafeCall([&]() {                  \
++      if (data == nullptr) {                                         \
++        throw std::invalid_argument(                                 \
++            "The pointer of data shouldn't be nullptr");            \
++      }                                                              \
++      PD_TensorCopyFromCpu##Type(pd_tensor, data);                   \
++    });                                                             \
++  }
++REPEAT_ALL_DATA_TYPE(PD_TENSOR_COPY_FROM_CPU2_IMPL)
++#undef PD_TENSOR_COPY_FROM_CPU2_IMPL
++
+ #define PD_TENSOR_COPY_TO_CPU_IMPL(type, Type)                                \
+   void PD_TensorCopyToCpu##Type(__pd_keep PD_Tensor* pd_tensor, type* data) { \
+     CHECK_AND_CONVERT_PD_TENSOR;                                              \
+@@ -92,6 +153,20 @@ REPEAT_ALL_DATA_TYPE(PD_TENSOR_COPY_FROM_CPU_IMPL)
+ REPEAT_ALL_DATA_TYPE(PD_TENSOR_COPY_TO_CPU_IMPL)
+ #undef PD_TENSOR_COPY_TO_CPU_IMPL
+ 
++#define PD_TENSOR_COPY_TO_CPU2_IMPL(type, Type)                   \
++  int PD_TensorCopyToCpu##Type##2(__pd_keep PD_Tensor* pd_tensor, \
++                                  type* data) {                   \
++    return paddle_infer::capi_exp::SafeCall([&]() {               \
++      if (data == nullptr) {                                      \
++        throw std::invalid_argument(                              \
++            "The pointer of data shouldn't be nullptr");         \
++      }                                                           \
++      PD_TensorCopyToCpu##Type(pd_tensor, data);                  \
++    });                                                          \
++  }
++REPEAT_ALL_DATA_TYPE(PD_TENSOR_COPY_TO_CPU2_IMPL)
++#undef PD_TENSOR_COPY_TO_CPU2_IMPL
++
+ #undef REPEAT_ALL_DATA_TYPE
+ 
+ __pd_give PD_OneDimArrayInt32* PD_TensorGetShape(
+@@ -99,22 +174,54 @@ __pd_give PD_OneDimArrayInt32* PD_TensorGetShape(
+   CHECK_AND_CONVERT_PD_TENSOR;
+   return paddle_infer::CvtVecToOneDimArrayInt32(tensor->shape());
+ }
++int PD_TensorGetShape2(__pd_keep PD_Tensor* pd_tensor,
++                       __pd_give PD_OneDimArrayInt32** out) {
++  return paddle_infer::capi_exp::SafeCallWithOutput(
++      out, static_cast<PD_OneDimArrayInt32*>(nullptr), [&]() {
++        return PD_TensorGetShape(pd_tensor);
++      });
++}
+ void PD_TensorSetLod(__pd_keep PD_Tensor* pd_tensor,
+                      __pd_keep PD_TwoDimArraySize* lod) {
+   CHECK_AND_CONVERT_PD_TENSOR;
+   tensor->SetLoD(paddle_infer::CvtTwoDimArrayToVecSize(lod));
+ }
++int PD_TensorSetLod2(__pd_keep PD_Tensor* pd_tensor,
++                     __pd_keep PD_TwoDimArraySize* lod) {
++  return paddle_infer::capi_exp::SafeCall(
++      [&]() { PD_TensorSetLod(pd_tensor, lod); });
++}
+ __pd_give PD_TwoDimArraySize* PD_TensorGetLod(__pd_keep PD_Tensor* pd_tensor) {
+   CHECK_AND_CONVERT_PD_TENSOR;
+   return paddle_infer::CvtVecToTwoDimArraySize(tensor->lod());
+ }
++int PD_TensorGetLod2(__pd_keep PD_Tensor* pd_tensor,
++                     __pd_give PD_TwoDimArraySize** out) {
++  return paddle_infer::capi_exp::SafeCallWithOutput(
++      out, static_cast<PD_TwoDimArraySize*>(nullptr), [&]() {
++        return PD_TensorGetLod(pd_tensor);
++      });
++}
+ const char* PD_TensorGetName(__pd_keep PD_Tensor* pd_tensor) {
+   CHECK_AND_CONVERT_PD_TENSOR;
+   return tensor->name().c_str();
+ }
++int PD_TensorGetName2(__pd_keep PD_Tensor* pd_tensor, const char** out) {
++  return paddle_infer::capi_exp::SafeCallWithOutput(
++      out, static_cast<const char*>(nullptr), [&]() {
++        return PD_TensorGetName(pd_tensor);
++      });
++}
+ PD_DataType PD_TensorGetDataType(__pd_keep PD_Tensor* pd_tensor) {
+   CHECK_AND_CONVERT_PD_TENSOR;
+   return paddle_infer::CvtFromCxxDatatype(tensor->type());
+ }
+ 
++int PD_TensorGetDataType2(__pd_keep PD_Tensor* pd_tensor, PD_DataType* out) {
++  return paddle_infer::capi_exp::SafeCallWithOutput(
++      out, static_cast<PD_DataType>(PD_DATA_UNK), [&]() {
++        return PD_TensorGetDataType(pd_tensor);
++      });
++}
++
+ }  // extern "C"
+diff --git a/paddle/fluid/inference/capi_exp/pd_tensor.h b/paddle/fluid/inference/capi_exp/pd_tensor.h
+index 29ea4b5d62..4c8abcffb5 100644
+--- a/paddle/fluid/inference/capi_exp/pd_tensor.h
++++ b/paddle/fluid/inference/capi_exp/pd_tensor.h
+@@ -40,6 +40,7 @@ extern "C" {
+ /// \param[in] pd_tensor tensor
+ ///
+ PADDLE_CAPI_EXPORT extern void PD_TensorDestroy(__pd_take PD_Tensor* pd_tensor);
++PADDLE_CAPI_EXPORT extern int PD_TensorDestroy2(__pd_take PD_Tensor* pd_tensor);
+ 
+ ///
+ /// \brief Reset the shape of the tensor.
+@@ -54,6 +55,8 @@ PADDLE_CAPI_EXPORT extern void PD_TensorDestroy(__pd_take PD_Tensor* pd_tensor);
+ PADDLE_CAPI_EXPORT extern void PD_TensorReshape(__pd_keep PD_Tensor* pd_tensor,
+                                                 size_t shape_size,
+                                                 int32_t* shape);
++PADDLE_CAPI_EXPORT extern int PD_TensorReshape2(
++    __pd_keep PD_Tensor* pd_tensor, size_t shape_size, int32_t* shape);
+ 
+ ///
+ /// \brief Get the memory pointer in CPU or GPU with 'float' data type.
+@@ -66,6 +69,8 @@ PADDLE_CAPI_EXPORT extern void PD_TensorReshape(__pd_keep PD_Tensor* pd_tensor,
+ ///
+ PADDLE_CAPI_EXPORT extern float* PD_TensorMutableDataFloat(
+     __pd_keep PD_Tensor* pd_tensor, PD_PlaceType place);
++PADDLE_CAPI_EXPORT extern int PD_TensorMutableDataFloat2(
++    __pd_keep PD_Tensor* pd_tensor, PD_PlaceType place, float** out);
+ ///
+ /// \brief Get the memory pointer in CPU or GPU with 'int64_t' data type.
+ /// Please Reshape the tensor first before call this.
+@@ -77,6 +82,8 @@ PADDLE_CAPI_EXPORT extern float* PD_TensorMutableDataFloat(
+ ///
+ PADDLE_CAPI_EXPORT extern int64_t* PD_TensorMutableDataInt64(
+     __pd_keep PD_Tensor* pd_tensor, PD_PlaceType place);
++PADDLE_CAPI_EXPORT extern int PD_TensorMutableDataInt642(
++    __pd_keep PD_Tensor* pd_tensor, PD_PlaceType place, int64_t** out);
+ ///
+ /// \brief Get the memory pointer in CPU or GPU with 'int32_t' data type.
+ /// Please Reshape the tensor first before call this.
+@@ -88,6 +95,8 @@ PADDLE_CAPI_EXPORT extern int64_t* PD_TensorMutableDataInt64(
+ ///
+ PADDLE_CAPI_EXPORT extern int32_t* PD_TensorMutableDataInt32(
+     __pd_keep PD_Tensor* pd_tensor, PD_PlaceType place);
++PADDLE_CAPI_EXPORT extern int PD_TensorMutableDataInt322(
++    __pd_keep PD_Tensor* pd_tensor, PD_PlaceType place, int32_t** out);
+ ///
+ /// \brief Get the memory pointer in CPU or GPU with 'uint8_t' data type.
+ /// Please Reshape the tensor first before call this.
+@@ -99,6 +108,8 @@ PADDLE_CAPI_EXPORT extern int32_t* PD_TensorMutableDataInt32(
+ ///
+ PADDLE_CAPI_EXPORT extern uint8_t* PD_TensorMutableDataUint8(
+     __pd_keep PD_Tensor* pd_tensor, PD_PlaceType place);
++PADDLE_CAPI_EXPORT extern int PD_TensorMutableDataUint82(
++    __pd_keep PD_Tensor* pd_tensor, PD_PlaceType place, uint8_t** out);
+ ///
+ /// \brief Get the memory pointer in CPU or GPU with 'int8_t' data type.
+ /// Please Reshape the tensor first before call this.
+@@ -110,6 +121,8 @@ PADDLE_CAPI_EXPORT extern uint8_t* PD_TensorMutableDataUint8(
+ ///
+ PADDLE_CAPI_EXPORT extern int8_t* PD_TensorMutableDataInt8(
+     __pd_keep PD_Tensor* pd_tensor, PD_PlaceType place);
++PADDLE_CAPI_EXPORT extern int PD_TensorMutableDataInt82(
++    __pd_keep PD_Tensor* pd_tensor, PD_PlaceType place, int8_t** out);
+ ///
+ /// \brief Get the memory pointer directly.
+ /// It's usually used to get the output data pointer.
+@@ -121,6 +134,11 @@ PADDLE_CAPI_EXPORT extern int8_t* PD_TensorMutableDataInt8(
+ ///
+ PADDLE_CAPI_EXPORT extern float* PD_TensorDataFloat(
+     __pd_keep PD_Tensor* pd_tensor, PD_PlaceType* place, int32_t* size);
++PADDLE_CAPI_EXPORT extern int PD_TensorDataFloat2(
++    __pd_keep PD_Tensor* pd_tensor,
++    PD_PlaceType* place,
++    int32_t* size,
++    float** out);
+ ///
+ /// \brief Get the memory pointer directly.
+ /// It's usually used to get the output data pointer.
+@@ -132,6 +150,11 @@ PADDLE_CAPI_EXPORT extern float* PD_TensorDataFloat(
+ ///
+ PADDLE_CAPI_EXPORT extern int64_t* PD_TensorDataInt64(
+     __pd_keep PD_Tensor* pd_tensor, PD_PlaceType* place, int32_t* size);
++PADDLE_CAPI_EXPORT extern int PD_TensorDataInt642(
++    __pd_keep PD_Tensor* pd_tensor,
++    PD_PlaceType* place,
++    int32_t* size,
++    int64_t** out);
+ ///
+ /// \brief Get the memory pointer directly.
+ /// It's usually used to get the output data pointer.
+@@ -143,6 +166,11 @@ PADDLE_CAPI_EXPORT extern int64_t* PD_TensorDataInt64(
+ ///
+ PADDLE_CAPI_EXPORT extern int32_t* PD_TensorDataInt32(
+     __pd_keep PD_Tensor* pd_tensor, PD_PlaceType* place, int32_t* size);
++PADDLE_CAPI_EXPORT extern int PD_TensorDataInt322(
++    __pd_keep PD_Tensor* pd_tensor,
++    PD_PlaceType* place,
++    int32_t* size,
++    int32_t** out);
+ ///
+ /// \brief Get the memory pointer directly.
+ /// It's usually used to get the output data pointer.
+@@ -154,6 +182,11 @@ PADDLE_CAPI_EXPORT extern int32_t* PD_TensorDataInt32(
+ ///
+ PADDLE_CAPI_EXPORT extern uint8_t* PD_TensorDataUint8(
+     __pd_keep PD_Tensor* pd_tensor, PD_PlaceType* place, int32_t* size);
++PADDLE_CAPI_EXPORT extern int PD_TensorDataUint82(
++    __pd_keep PD_Tensor* pd_tensor,
++    PD_PlaceType* place,
++    int32_t* size,
++    uint8_t** out);
+ ///
+ /// \brief Get the memory pointer directly.
+ /// It's usually used to get the output data pointer.
+@@ -165,6 +198,11 @@ PADDLE_CAPI_EXPORT extern uint8_t* PD_TensorDataUint8(
+ ///
+ PADDLE_CAPI_EXPORT extern int8_t* PD_TensorDataInt8(
+     __pd_keep PD_Tensor* pd_tensor, PD_PlaceType* place, int32_t* size);
++PADDLE_CAPI_EXPORT extern int PD_TensorDataInt82(
++    __pd_keep PD_Tensor* pd_tensor,
++    PD_PlaceType* place,
++    int32_t* size,
++    int8_t** out);
+ ///
+ /// \brief Copy the host memory to tensor data.
+ /// It's usually used to set the input tensor data.
+@@ -173,6 +211,8 @@ PADDLE_CAPI_EXPORT extern int8_t* PD_TensorDataInt8(
+ ///
+ PADDLE_CAPI_EXPORT extern void PD_TensorCopyFromCpuFloat(
+     __pd_keep PD_Tensor* pd_tensor, const float* data);
++PADDLE_CAPI_EXPORT extern int PD_TensorCopyFromCpuFloat2(
++    __pd_keep PD_Tensor* pd_tensor, const float* data);
+ ///
+ /// \brief Copy the host memory to tensor data.
+ /// It's usually used to set the input tensor data.
+@@ -181,6 +221,8 @@ PADDLE_CAPI_EXPORT extern void PD_TensorCopyFromCpuFloat(
+ ///
+ PADDLE_CAPI_EXPORT extern void PD_TensorCopyFromCpuInt64(
+     __pd_keep PD_Tensor* pd_tensor, const int64_t* data);
++PADDLE_CAPI_EXPORT extern int PD_TensorCopyFromCpuInt642(
++    __pd_keep PD_Tensor* pd_tensor, const int64_t* data);
+ ///
+ /// \brief Copy the host memory to tensor data.
+ /// It's usually used to set the input tensor data.
+@@ -189,6 +231,8 @@ PADDLE_CAPI_EXPORT extern void PD_TensorCopyFromCpuInt64(
+ ///
+ PADDLE_CAPI_EXPORT extern void PD_TensorCopyFromCpuInt32(
+     __pd_keep PD_Tensor* pd_tensor, const int32_t* data);
++PADDLE_CAPI_EXPORT extern int PD_TensorCopyFromCpuInt322(
++    __pd_keep PD_Tensor* pd_tensor, const int32_t* data);
+ ///
+ /// \brief Copy the host memory to tensor data.
+ /// It's usually used to set the input tensor data.
+@@ -197,6 +241,8 @@ PADDLE_CAPI_EXPORT extern void PD_TensorCopyFromCpuInt32(
+ ///
+ PADDLE_CAPI_EXPORT extern void PD_TensorCopyFromCpuUint8(
+     __pd_keep PD_Tensor* pd_tensor, const uint8_t* data);
++PADDLE_CAPI_EXPORT extern int PD_TensorCopyFromCpuUint82(
++    __pd_keep PD_Tensor* pd_tensor, const uint8_t* data);
+ ///
+ /// \brief Copy the host memory to tensor data.
+ /// It's usually used to set the input tensor data.
+@@ -205,6 +251,8 @@ PADDLE_CAPI_EXPORT extern void PD_TensorCopyFromCpuUint8(
+ ///
+ PADDLE_CAPI_EXPORT extern void PD_TensorCopyFromCpuInt8(
+     __pd_keep PD_Tensor* pd_tensor, const int8_t* data);
++PADDLE_CAPI_EXPORT extern int PD_TensorCopyFromCpuInt82(
++    __pd_keep PD_Tensor* pd_tensor, const int8_t* data);
+ ///
+ /// \brief Copy the tensor data to the host memory.
+ /// It's usually used to get the output tensor data.
+@@ -213,6 +261,8 @@ PADDLE_CAPI_EXPORT extern void PD_TensorCopyFromCpuInt8(
+ ///
+ PADDLE_CAPI_EXPORT extern void PD_TensorCopyToCpuFloat(
+     __pd_keep PD_Tensor* pd_tensor, float* data);
++PADDLE_CAPI_EXPORT extern int PD_TensorCopyToCpuFloat2(
++    __pd_keep PD_Tensor* pd_tensor, float* data);
+ ///
+ /// \brief Copy the tensor data to the host memory.
+ /// It's usually used to get the output tensor data.
+@@ -221,6 +271,8 @@ PADDLE_CAPI_EXPORT extern void PD_TensorCopyToCpuFloat(
+ ///
+ PADDLE_CAPI_EXPORT extern void PD_TensorCopyToCpuInt64(
+     __pd_keep PD_Tensor* pd_tensor, int64_t* data);
++PADDLE_CAPI_EXPORT extern int PD_TensorCopyToCpuInt642(
++    __pd_keep PD_Tensor* pd_tensor, int64_t* data);
+ ///
+ /// \brief Copy the tensor data to the host memory.
+ /// It's usually used to get the output tensor data.
+@@ -229,6 +281,8 @@ PADDLE_CAPI_EXPORT extern void PD_TensorCopyToCpuInt64(
+ ///
+ PADDLE_CAPI_EXPORT extern void PD_TensorCopyToCpuInt32(
+     __pd_keep PD_Tensor* pd_tensor, int32_t* data);
++PADDLE_CAPI_EXPORT extern int PD_TensorCopyToCpuInt322(
++    __pd_keep PD_Tensor* pd_tensor, int32_t* data);
+ ///
+ /// \brief Copy the tensor data to the host memory.
+ /// It's usually used to get the output tensor data.
+@@ -237,6 +291,8 @@ PADDLE_CAPI_EXPORT extern void PD_TensorCopyToCpuInt32(
+ ///
+ PADDLE_CAPI_EXPORT extern void PD_TensorCopyToCpuUint8(
+     __pd_keep PD_Tensor* pd_tensor, uint8_t* data);
++PADDLE_CAPI_EXPORT extern int PD_TensorCopyToCpuUint82(
++    __pd_keep PD_Tensor* pd_tensor, uint8_t* data);
+ ///
+ /// \brief Copy the tensor data to the host memory.
+ /// It's usually used to get the output tensor data.
+@@ -245,6 +301,8 @@ PADDLE_CAPI_EXPORT extern void PD_TensorCopyToCpuUint8(
+ ///
+ PADDLE_CAPI_EXPORT extern void PD_TensorCopyToCpuInt8(
+     __pd_keep PD_Tensor* pd_tensor, int8_t* data);
++PADDLE_CAPI_EXPORT extern int PD_TensorCopyToCpuInt82(
++    __pd_keep PD_Tensor* pd_tensor, int8_t* data);
+ ///
+ /// \brief Get the tensor shape
+ /// \param[in] pd_tensor tensor.
+@@ -252,6 +310,8 @@ PADDLE_CAPI_EXPORT extern void PD_TensorCopyToCpuInt8(
+ ///
+ PADDLE_CAPI_EXPORT extern __pd_give PD_OneDimArrayInt32* PD_TensorGetShape(
+     __pd_keep PD_Tensor* pd_tensor);
++PADDLE_CAPI_EXPORT extern int PD_TensorGetShape2(
++    __pd_keep PD_Tensor* pd_tensor, __pd_give PD_OneDimArrayInt32** out);
+ 
+ ///
+ /// \brief Set the tensor lod information
+@@ -260,6 +320,8 @@ PADDLE_CAPI_EXPORT extern __pd_give PD_OneDimArrayInt32* PD_TensorGetShape(
+ ///
+ PADDLE_CAPI_EXPORT extern void PD_TensorSetLod(
+     __pd_keep PD_Tensor* pd_tensor, __pd_keep PD_TwoDimArraySize* lod);
++PADDLE_CAPI_EXPORT extern int PD_TensorSetLod2(
++    __pd_keep PD_Tensor* pd_tensor, __pd_keep PD_TwoDimArraySize* lod);
+ ///
+ /// \brief Get the tensor lod information
+ /// \param[in] pd_tensor tensor.
+@@ -267,6 +329,8 @@ PADDLE_CAPI_EXPORT extern void PD_TensorSetLod(
+ ///
+ PADDLE_CAPI_EXPORT extern __pd_give PD_TwoDimArraySize* PD_TensorGetLod(
+     __pd_keep PD_Tensor* pd_tensor);
++PADDLE_CAPI_EXPORT extern int PD_TensorGetLod2(
++    __pd_keep PD_Tensor* pd_tensor, __pd_give PD_TwoDimArraySize** out);
+ ///
+ /// \brief Get the tensor name
+ /// \param[in] pd_tensor tensor.
+@@ -274,6 +338,8 @@ PADDLE_CAPI_EXPORT extern __pd_give PD_TwoDimArraySize* PD_TensorGetLod(
+ ///
+ PADDLE_CAPI_EXPORT extern const char* PD_TensorGetName(
+     __pd_keep PD_Tensor* pd_tensor);
++PADDLE_CAPI_EXPORT extern int PD_TensorGetName2(
++    __pd_keep PD_Tensor* pd_tensor, const char** out);
+ ///
+ /// \brief Get the tensor data type
+ /// \param[in] pd_tensor tensor.
+@@ -281,6 +347,8 @@ PADDLE_CAPI_EXPORT extern const char* PD_TensorGetName(
+ ///
+ PADDLE_CAPI_EXPORT extern PD_DataType PD_TensorGetDataType(
+     __pd_keep PD_Tensor* pd_tensor);
++PADDLE_CAPI_EXPORT extern int PD_TensorGetDataType2(
++    __pd_keep PD_Tensor* pd_tensor, PD_DataType* out);
+ 
+ #ifdef __cplusplus
+ }  // extern "C"
+diff --git a/paddle/fluid/inference/capi_exp/pd_utils.cc b/paddle/fluid/inference/capi_exp/pd_utils.cc
+index 95458ec204..651d7b28ed 100644
+--- a/paddle/fluid/inference/capi_exp/pd_utils.cc
++++ b/paddle/fluid/inference/capi_exp/pd_utils.cc
+@@ -14,10 +14,49 @@
+ #include <string>
+ 
+ #include "paddle/fluid/inference/api/paddle_inference_api.h"
++#include "paddle/fluid/inference/capi_exp/pd_error_internal.h"
+ #include "paddle/fluid/inference/capi_exp/pd_utils.h"
+ #include "paddle/fluid/inference/capi_exp/utils_internal.h"
+ #include "paddle/fluid/platform/enforce.h"
+ 
++namespace paddle_infer {
++namespace capi_exp {
++
++namespace {
++thread_local int g_last_error_code = PD_STATUS_OK;
++thread_local std::string g_last_error_message;
++}  // namespace
++
++void ClearLastError() {
++  g_last_error_code = PD_STATUS_OK;
++  g_last_error_message.clear();
++}
++
++int GetLastErrorCode() { return g_last_error_code; }
++
++const char* GetLastErrorMessage() { return g_last_error_message.c_str(); }
++
++int SetLastError(PD_StatusCode code, const std::string& message) {
++  g_last_error_code = code;
++  g_last_error_message = message;
++  return code;
++}
++
++}  // namespace capi_exp
++}  // namespace paddle_infer
++
++extern "C" {
++
++int PD_GetLastErrorCode() {
++  return paddle_infer::capi_exp::GetLastErrorCode();
++}
++
++const char* PD_GetLastError() {
++  return paddle_infer::capi_exp::GetLastErrorMessage();
++}
++
++}  // extern "C"
++
+ #define DESTROY_ONE_DIM_ARRAY(type)                                           \
+   void PD_OneDimArray##type##Destroy(__pd_take PD_OneDimArray##type* array) { \
+     if (array != nullptr) {                                                   \
