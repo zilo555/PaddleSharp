@@ -1,8 +1,22 @@
 diff --git a/paddle/fluid/inference/capi_exp/pd_common.h b/paddle/fluid/inference/capi_exp/pd_common.h
-index 6581d09fab..a9200aa696 100644
+index 6581d09fab..07bd731644 100644
 --- a/paddle/fluid/inference/capi_exp/pd_common.h
 +++ b/paddle/fluid/inference/capi_exp/pd_common.h
-@@ -80,3 +80,30 @@ PD_ENUM(PD_DataType){
+@@ -59,6 +59,13 @@ typedef int8_t PD_Bool;
+ #define TRUE 1
+ #define FALSE 0
+ 
++typedef void (*PD_GlogRedirectCallback)(int severity,
++                                        const char* file,
++                                        int line,
++                                        const char* message,
++                                        size_t message_len,
++                                        void* user_data);
++
+ #define PD_ENUM(type)   \
+   typedef int32_t type; \
+   enum
+@@ -80,3 +87,56 @@ PD_ENUM(PD_DataType){
      PD_DATA_UINT8,
      PD_DATA_INT8,
  };
@@ -29,6 +43,32 @@ index 6581d09fab..a9200aa696 100644
 +/// the next v2 C API call on the same thread.
 +///
 +PADDLE_CAPI_EXPORT extern const char* PD_GetLastError();
++
++///
++/// \brief Set the minimum emitted glog severity level for the current process.
++/// Valid levels are 0 (INFO), 1 (WARNING), 2 (ERROR), and 3 (FATAL).
++/// On invalid input, the previous level is preserved and the last C API error
++/// is updated.
++///
++PADDLE_CAPI_EXPORT extern void PD_SetGlogMinLogLevel(int level);
++
++///
++/// \brief Get the current process-wide glog minimum severity level.
++///
++PADDLE_CAPI_EXPORT extern int PD_GetGlogMinLogLevel();
++
++///
++/// \brief Redirect process-wide glog output to a single C callback.
++/// Passing nullptr unregisters the current callback. While a callback is
++/// registered, Paddle best-effort disables the original stderr console output
++/// and forwards log messages through the callback instead.
++///
++/// The callback is invoked synchronously from glog. The message buffer is only
++/// valid for the duration of the callback, so the consumer should copy it if
++/// it needs to keep the contents.
++///
++PADDLE_CAPI_EXPORT extern void PD_SetGlogRedirectCallback(
++  PD_GlogRedirectCallback callback, void* user_data);
 +
 +#ifdef __cplusplus
 +}  // extern "C"
@@ -175,10 +215,16 @@ index f17d78f915..7d5101fb4e 100644
  /// \brief Clear the intermediate tensors of the predictor
  ///
 diff --git a/paddle/fluid/inference/capi_exp/pd_utils.cc b/paddle/fluid/inference/capi_exp/pd_utils.cc
-index 95458ec204..651d7b28ed 100644
+index 95458ec204..e60df9b278 100644
 --- a/paddle/fluid/inference/capi_exp/pd_utils.cc
 +++ b/paddle/fluid/inference/capi_exp/pd_utils.cc
-@@ -14,10 +14,49 @@
+@@ -11,12 +11,183 @@
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
++#include <glog/logging.h>
++
++#include <mutex>
  #include <string>
  
  #include "paddle/fluid/inference/api/paddle_inference_api.h"
@@ -186,13 +232,74 @@ index 95458ec204..651d7b28ed 100644
  #include "paddle/fluid/inference/capi_exp/pd_utils.h"
  #include "paddle/fluid/inference/capi_exp/utils_internal.h"
  #include "paddle/fluid/platform/enforce.h"
- 
++#include "paddle/fluid/platform/init.h"
++
 +namespace paddle_infer {
 +namespace capi_exp {
 +
 +namespace {
 +thread_local int g_last_error_code = PD_STATUS_OK;
 +thread_local std::string g_last_error_message;
++
++constexpr int kMaxGlogMinLogLevel = 3;
++constexpr int kDisabledStderrThreshold = 4;
++
++struct GlogRedirectState {
++  std::mutex mutex;
++  PD_GlogRedirectCallback callback = nullptr;
++  void* user_data = nullptr;
++  bool sink_registered = false;
++  bool flags_saved = false;
++  bool saved_logtostderr = false;
++  int saved_stderrthreshold = 0;
++};
++
++GlogRedirectState& GetGlogRedirectState();
++
++class CApiLogSink : public google::LogSink {
++ public:
++  void send(google::LogSeverity severity,
++            const char* full_filename,
++            const char* /*base_filename*/,
++            int line,
++            const tm* /*time*/,
++            const char* message,
++            size_t message_len) override {
++    PD_GlogRedirectCallback callback = nullptr;
++    void* user_data = nullptr;
++    {
++      std::lock_guard<std::mutex> lock(GetGlogRedirectState().mutex);
++      callback = GetGlogRedirectState().callback;
++      user_data = GetGlogRedirectState().user_data;
++    }
++    if (callback != nullptr) {
++      callback(static_cast<int>(severity),
++               full_filename == nullptr ? "" : full_filename,
++               line,
++               message,
++               message_len,
++               user_data);
++    }
++  }
++};
++
++GlogRedirectState& GetGlogRedirectState() {
++  static auto* state = new GlogRedirectState();
++  return *state;
++}
++
++CApiLogSink& GetGlogRedirectSink() {
++  static auto* sink = new CApiLogSink();
++  return *sink;
++}
++
++void EnsureGlogInitialized() {
++  paddle::framework::InitGLOG("paddle_inference_c_api");
++}
++
++bool IsValidGlogMinLogLevel(int level) {
++  return level >= 0 && level <= kMaxGlogMinLogLevel;
++}
 +}  // namespace
 +
 +void ClearLastError() {
@@ -223,8 +330,75 @@ index 95458ec204..651d7b28ed 100644
 +  return paddle_infer::capi_exp::GetLastErrorMessage();
 +}
 +
-+}  // extern "C"
++void PD_SetGlogMinLogLevel(int level) {
++  paddle_infer::capi_exp::ClearLastError();
++  if (!paddle_infer::capi_exp::IsValidGlogMinLogLevel(level)) {
++    paddle_infer::capi_exp::SetLastError(
++        PD_STATUS_INVALID_ARGUMENT,
++        "glog minimum severity level must be in range [0, 3]");
++    return;
++  }
++  paddle_infer::capi_exp::EnsureGlogInitialized();
++  FLAGS_minloglevel = level;
++}
 +
++int PD_GetGlogMinLogLevel() {
++  paddle_infer::capi_exp::ClearLastError();
++  paddle_infer::capi_exp::EnsureGlogInitialized();
++  return FLAGS_minloglevel;
++}
++
++void PD_SetGlogRedirectCallback(PD_GlogRedirectCallback callback,
++                                void* user_data) {
++  paddle_infer::capi_exp::ClearLastError();
++  paddle_infer::capi_exp::EnsureGlogInitialized();
++
++  auto& state = paddle_infer::capi_exp::GetGlogRedirectState();
++  bool should_add_sink = false;
++  bool should_remove_sink = false;
++
++  {
++    std::lock_guard<std::mutex> lock(state.mutex);
++
++    if (callback == nullptr) {
++      state.callback = nullptr;
++      state.user_data = nullptr;
++      if (state.sink_registered) {
++        state.sink_registered = false;
++        should_remove_sink = true;
++      }
++      if (state.flags_saved) {
++        FLAGS_logtostderr = state.saved_logtostderr;
++        FLAGS_stderrthreshold = state.saved_stderrthreshold;
++        state.flags_saved = false;
++      }
++    } else {
++      if (!state.sink_registered) {
++        state.saved_logtostderr = FLAGS_logtostderr;
++        state.saved_stderrthreshold = FLAGS_stderrthreshold;
++        state.flags_saved = true;
++        state.sink_registered = true;
++        should_add_sink = true;
++      }
++
++      state.callback = callback;
++      state.user_data = user_data;
++
++      FLAGS_logtostderr = false;
++      FLAGS_stderrthreshold =
++          paddle_infer::capi_exp::kDisabledStderrThreshold;
++    }
++  }
++
++  if (should_remove_sink) {
++    google::RemoveLogSink(&paddle_infer::capi_exp::GetGlogRedirectSink());
++  }
++  if (should_add_sink) {
++    google::AddLogSink(&paddle_infer::capi_exp::GetGlogRedirectSink());
++  }
++}
++
++}  // extern "C"
+ 
  #define DESTROY_ONE_DIM_ARRAY(type)                                           \
    void PD_OneDimArray##type##Destroy(__pd_take PD_OneDimArray##type* array) { \
-     if (array != nullptr) {                                                   \
