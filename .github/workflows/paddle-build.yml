@@ -37,8 +37,8 @@ jobs:
           - { os: ubuntu-22.04,     name: mkldnn,               cmake_flags: "-DWITH_MKL=ON -DWITH_ONNXRUNTIME=ON" }
           - { os: ubuntu-22.04,     name: openvino,             cmake_flags: "-DWITH_MKL=ON -DWITH_OPENVINO=ON -DWITH_ONNXRUNTIME=ON" }
           - { os: ubuntu-22.04-arm, name: openblas,             cmake_flags: "-DWITH_ARM=ON -DCMAKE_CXX_FLAGS=\"-Wno-error=class-memaccess\"" }
-          - { os: macos-26-intel,   name: openblas,             cmake_flags: "-DWITH_ONNXRUNTIME=ON" }
-          - { os: macos-26,         name: openblas,             cmake_flags: "-DWITH_ARM=ON" }
+          - { os: macos-15-intel,   name: openblas,             cmake_flags: "-DWITH_ONNXRUNTIME=ON" }
+          - { os: macos-15,         name: openblas,             cmake_flags: "-DWITH_ARM=ON" }
     steps:
     - name: Setup dependencies
       shell: bash
