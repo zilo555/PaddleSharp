@@ -119,6 +119,7 @@ jobs:
           '02-warprnnt-deps-order.patch'
           '03-onednn-add-double.patch'
           '04-v2-capi.patch'
+          '05-windows-stacktrace.patch'
         )
 
         foreach ($patch in $patches) {
