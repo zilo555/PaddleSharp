@@ -154,7 +154,7 @@ jobs:
         ls -lR ./paddle-src/build
 
     - name: Upload paddle_inference_install_dir
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v7
       with:
         name: ${{ matrix.os }}_cpp_${{ matrix.name }}
         path: ./paddle-src/build/paddle_inference_install_dir/*
@@ -209,7 +209,7 @@ jobs:
         ls -lR ./paddle-src/build/paddle_inference_install_dir
 
     - name: Upload paddle_inference_c_install_dir
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: ${{ matrix.os }}_c_${{ matrix.name }}
         path: ./paddle-src/build/paddle_inference_c_install_dir/*
