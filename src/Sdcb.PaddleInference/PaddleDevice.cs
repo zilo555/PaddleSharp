@@ -19,11 +19,25 @@ public static class PaddleDevice
     /// <param name="memoryOptimized">Whether to use memory optimized mode. Default value is true.</param>
     /// <param name="glogEnabled">Whether to enable GLog. Default value is false.</param>
     /// <returns>The MKLDNN paddle device definition.</returns>
+    /// <remarks>Deprecated, use <see cref="OneDnn(int, int, bool, bool)"/> instead.</remarks>
     public static Action<PaddleConfig> Mkldnn(int cacheCapacity = 10, int cpuMathThreadCount = 0, bool memoryOptimized = true, bool glogEnabled = false)
+    {
+        return OneDnn(cacheCapacity, cpuMathThreadCount, memoryOptimized, glogEnabled);
+    }
+
+    /// <summary>
+    /// Create an action that sets up a Paddle configuration for using oneDNN on the CPU.
+    /// </summary>
+    /// <param name="cacheCapacity">The capacity(in MB) of the oneDNN primitive cache. Default value is 10.</param>
+    /// <param name="cpuMathThreadCount">The number of CPU math threads to use. Default value is 0.</param>
+    /// <param name="memoryOptimized">Whether to use memory optimized mode. Default value is true.</param>
+    /// <param name="glogEnabled">Whether to enable GLog. Default value is false.</param>
+    /// <returns>The oneDNN paddle device definition.</returns>
+    public static Action<PaddleConfig> OneDnn(int cacheCapacity = 10, int cpuMathThreadCount = 0, bool memoryOptimized = true, bool glogEnabled = false)
     {
         return cfg =>
         {
-            cfg.MkldnnEnabled = true;
+            cfg.OneDnnEnabled = true;
             cfg.MkldnnCacheCapacity = cacheCapacity;
             cfg.CpuMathThreadCount = cpuMathThreadCount;
             CommonAction(cfg, memoryOptimized, glogEnabled);

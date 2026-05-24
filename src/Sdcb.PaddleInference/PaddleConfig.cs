@@ -192,7 +192,8 @@ public class PaddleConfig : IDisposable
         }
     }
 
-    /// <summary>A boolean state telling whether to use the MKLDNN.</summary>
+    /// <summary>A boolean state telling whether to use the MKLDNN, this is deprecated, please use <see cref="OneDnnEnabled"/> instead.</summary>
+    [Obsolete("MKLDNN is renamed to OneDNN since version 3.2.0, please use OneDnnEnabled instead.")]
     public bool MkldnnEnabled
     {
         get
@@ -211,6 +212,29 @@ public class PaddleConfig : IDisposable
             else if (MkldnnEnabled)
             {
                 Console.WriteLine($"Warn: Mkldnn cannot disabled after enabled.");
+            }
+        }
+    }
+
+    /// <summary>A boolean state telling whether to use the ONEDNN.</summary>
+    public bool OneDnnEnabled
+    {
+        get
+        {
+            ThrowIfDisposed();
+            return PaddleNative.PD_ConfigOnednnEnabled(_ptr) != 0;
+        }
+        set
+        {
+            ThrowIfDisposed();
+
+            if (value)
+            {
+                PaddleNative.PD_ConfigEnableONEDNN(_ptr);
+            }
+            else if (OneDnnEnabled)
+            {
+                Console.WriteLine($"Warn: OneDnn cannot disabled after enabled.");
             }
         }
     }

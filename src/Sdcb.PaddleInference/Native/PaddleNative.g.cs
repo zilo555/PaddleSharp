@@ -7,12 +7,37 @@ using PD_Bool = System.SByte;
 using PD_PrecisionType = Sdcb.PaddleInference.PaddlePrecision;
 using PD_PlaceType = Sdcb.PaddleInference.PaddleMemoryPlace;
 using PD_DataType = Sdcb.PaddleInference.PaddleDataType;
+#pragma warning disable CS1591
 
 /// <summary>
 /// This class provides native methods to interact with the PaddleInference C library.
 /// </summary>
 public partial class PaddleNative
 {
+    /// <summary>Return the status code from the last failed v2 C API call on the current thread.</summary>
+    [DllImport(PaddleInferenceCLib)]
+    public static extern int PD_GetLastErrorCode();
+
+    /// <summary>Return the error message from the last failed v2 C API call on the current thread. The returned pointer is owned by Paddle and is valid until the next v2 C API call on the same thread.</summary>
+    /// <returns>(C API type: byte*)</returns>
+    [DllImport(PaddleInferenceCLib)]
+    public static extern IntPtr PD_GetLastError();
+
+    /// <summary>Set the minimum emitted glog severity level for the current process. Valid levels are 0 (INFO), 1 (WARNING), 2 (ERROR), and 3 (FATAL). On invalid input, the previous level is preserved and the last C API error is updated.</summary>
+    /// <param name="level" />
+    [DllImport(PaddleInferenceCLib)]
+    public static extern void PD_SetGlogMinLogLevel(int level);
+
+    /// <summary>Get the current process-wide glog minimum severity level.</summary>
+    [DllImport(PaddleInferenceCLib)]
+    public static extern int PD_GetGlogMinLogLevel();
+
+    /// <summary>Redirect process-wide glog output to a single C callback. Passing nullptr unregisters the current callback. While a callback is registered, Paddle best-effort disables the original stderr console output and forwards log messages through the callback instead.</summary>
+    /// <param name="callback">(C API type: PD_GlogRedirectCallback) </param>
+    /// <param name="user_data">(C API type: void*) </param>
+    [DllImport(PaddleInferenceCLib)]
+    public static extern void PD_SetGlogRedirectCallback(PD_GlogRedirectCallback callback, IntPtr user_data);
+
     /// <summary>Create a paddle config</summary>
     /// <returns>new config.(C API type: PD_Config*)</returns>
     [DllImport(PaddleInferenceCLib)]
@@ -125,10 +150,10 @@ public partial class PaddleNative
 
     /// <summary>Turn on XPU.</summary>
     /// <param name="pd_config">(C API type: PD_Config*) config</param>
-    /// <param name="l3_workspace_size">The size of the video memory allocated by the l3         cache, the maximum is 16M.</param>
-    /// <param name="locked">(C API type: PD_Bool) Whether the allocated L3 cache can be locked. If false,       it means that the L3 cache is not locked, and the allocated L3       cache can be shared by multiple models, and multiple models       sharing the L3 cache will be executed sequentially on the card.</param>
-    /// <param name="autotune">(C API type: PD_Bool) Whether to autotune the conv operator in the model. If       true, when the conv operator of a certain dimension is executed       for the first time, it will automatically search for a better       algorithm to improve the performance of subsequent conv operators       of the same dimension.</param>
-    /// <param name="autotune_file">(C API type: byte*) Specify the path of the autotune file. If       autotune_file is specified, the algorithm specified in the       file will be used and autotune will not be performed again.</param>
+    /// <param name="l3_workspace_size">The size of the video memory allocated by the l3          cache, the maximum is 16M.</param>
+    /// <param name="locked">(C API type: PD_Bool) Whether the allocated L3 cache can be locked. If false,        it means that the L3 cache is not locked, and the allocated L3        cache can be shared by multiple models, and multiple models        sharing the L3 cache will be executed sequentially on the card.</param>
+    /// <param name="autotune">(C API type: PD_Bool) Whether to autotune the conv operator in the model. If        true, when the conv operator of a certain dimension is executed        for the first time, it will automatically search for a better        algorithm to improve the performance of subsequent conv operators        of the same dimension.</param>
+    /// <param name="autotune_file">(C API type: byte*) Specify the path of the autotune file. If        autotune_file is specified, the algorithm specified in the        file will be used and autotune will not be performed again.</param>
     /// <param name="precision">(C API type: byte*) Calculation accuracy of multi_encoder</param>
     /// <param name="adaptive_seqlen">(C API type: PD_Bool) Is the input of multi_encoder variable length</param>
     /// <param name="enable_multi_stream">(C API type: PD_Bool) Whether to enable the multi stream of xpu.</param>
@@ -302,7 +327,7 @@ public partial class PaddleNative
 
     /// <summary>Enable TensorRT DLA</summary>
     /// <param name="pd_config">(C API type: PD_Config*) config</param>
-    /// <param name="dla_core">ID of DLACore, which should be 0, 1,        ..., IBuilder.getNbDLACores() - 1</param>
+    /// <param name="dla_core">ID of DLACore, which should be 0, 1,         ..., IBuilder.getNbDLACores() - 1</param>
     [DllImport(PaddleInferenceCLib)]
     public static extern void PD_ConfigEnableTensorRtDla(IntPtr pd_config, int dla_core);
 
@@ -323,17 +348,34 @@ public partial class PaddleNative
     [DllImport(PaddleInferenceCLib)]
     public static extern void PD_ConfigEnableMKLDNN(IntPtr pd_config);
 
-    /// <summary>Set the cache capacity of different input shapes for OneDNN. Default value 0 means not caching any shape. Please see MKL-DNN Data Caching Design Document: https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/design/mkldnn/caching/caching.md</summary>
+    /// <summary>Turn on OneDNN.</summary>
+    /// <param name="pd_config">(C API type: PD_Config*) config</param>
+    [DllImport(PaddleInferenceCLib)]
+    public static extern void PD_ConfigEnableONEDNN(IntPtr pd_config);
+
+    /// <summary>Set the cache capacity of different input shapes for OneDNN. Default value 0 means not caching any shape. Please see MKL-DNN Data Caching Design Document: https://github.com/PaddlePaddle/docs/blob/develop/docs/design/mkldnn/caching/caching.md</summary>
     /// <param name="pd_config">(C API type: PD_Config*) config</param>
     /// <param name="capacity">The cache capacity.</param>
     [DllImport(PaddleInferenceCLib)]
     public static extern void PD_ConfigSetMkldnnCacheCapacity(IntPtr pd_config, int capacity);
+
+    /// <summary>Set the cache capacity of different input shapes for OneDNN. Default value 0 means not caching any shape. Please see MKL-DNN Data Caching Design Document: https://github.com/PaddlePaddle/docs/blob/develop/docs/design/mkldnn/caching/caching.md</summary>
+    /// <param name="pd_config">(C API type: PD_Config*) config</param>
+    /// <param name="capacity">The cache capacity.</param>
+    [DllImport(PaddleInferenceCLib)]
+    public static extern void PD_ConfigSetOnednnCacheCapacity(IntPtr pd_config, int capacity);
 
     /// <summary>A boolean state telling whether to use the OneDNN.</summary>
     /// <param name="pd_config">(C API type: PD_Config*) config</param>
     /// <returns>Whether to use the OneDNN.</returns>
     [DllImport(PaddleInferenceCLib)]
     public static extern PD_Bool PD_ConfigMkldnnEnabled(IntPtr pd_config);
+
+    /// <summary>A boolean state telling whether to use the OneDNN.</summary>
+    /// <param name="pd_config">(C API type: PD_Config*) config</param>
+    /// <returns>Whether to use the OneDNN.</returns>
+    [DllImport(PaddleInferenceCLib)]
+    public static extern PD_Bool PD_ConfigOnednnEnabled(IntPtr pd_config);
 
     /// <summary>Set the number of cpu math library threads.</summary>
     /// <param name="pd_config">(C API type: PD_Config*) config</param>
@@ -365,6 +407,24 @@ public partial class PaddleNative
     [DllImport(PaddleInferenceCLib)]
     public static extern PD_Bool PD_ConfigMkldnnBfloat16Enabled(IntPtr pd_config);
 
+    /// <summary>Specify the operator type list to use OneDNN acceleration.</summary>
+    /// <param name="pd_config">(C API type: PD_Config*) config</param>
+    /// <param name="ops_num">The number of operator type list.</param>
+    /// <param name="op_list">(C API type: IntPtr*) The name of operator type list.</param>
+    [DllImport(PaddleInferenceCLib)]
+    public static extern void PD_ConfigSetOnednnOp(IntPtr pd_config, nint ops_num, IntPtr op_list);
+
+    /// <summary>Turn on OneDNN bfloat16.</summary>
+    /// <param name="pd_config">(C API type: PD_Config*) config</param>
+    [DllImport(PaddleInferenceCLib)]
+    public static extern void PD_ConfigEnableOnednnBfloat16(IntPtr pd_config);
+
+    /// <summary>A boolean state telling whether to use the OneDNN Bfloat16.</summary>
+    /// <param name="pd_config">(C API type: PD_Config*) config</param>
+    /// <returns>Whether to use the OneDNN Bfloat16.</returns>
+    [DllImport(PaddleInferenceCLib)]
+    public static extern PD_Bool PD_ConfigOnednnBfloat16Enabled(IntPtr pd_config);
+
     /// <summary>Specify the operator type list to use Bfloat16 acceleration.</summary>
     /// <param name="pd_config">(C API type: PD_Config*) config</param>
     /// <param name="ops_num">The number of operator type list.</param>
@@ -383,6 +443,17 @@ public partial class PaddleNative
     [DllImport(PaddleInferenceCLib)]
     public static extern PD_Bool PD_ConfigMkldnnInt8Enabled(IntPtr pd_config);
 
+    /// <summary>Turn on OneDNN int8.</summary>
+    /// <param name="pd_config">(C API type: PD_Config*) config</param>
+    [DllImport(PaddleInferenceCLib)]
+    public static extern void PD_ConfigEnableOnednnInt8(IntPtr pd_config);
+
+    /// <summary>A boolean state telling whether to use the OneDNN int8.</summary>
+    /// <param name="pd_config">(C API type: PD_Config*) config</param>
+    /// <returns>Whether to use the OneDNN int8.</returns>
+    [DllImport(PaddleInferenceCLib)]
+    public static extern PD_Bool PD_ConfigOnednnInt8Enabled(IntPtr pd_config);
+
     /// <summary>Enable the GPU multi-computing stream feature. NOTE: The current behavior of this interface is to bind the computation stream to the thread, and this behavior may be changed in the future.</summary>
     /// <param name="pd_config">(C API type: PD_Config*) config</param>
     [DllImport(PaddleInferenceCLib)]
@@ -400,14 +471,14 @@ public partial class PaddleNative
     [DllImport(PaddleInferenceCLib)]
     public static extern void PD_ConfigSetExecStream(IntPtr pd_config, IntPtr stream);
 
-/// <summary>Specify the memory buffer of program and parameter. Used when model and params are loaded directly from memory.</summary>
-/// <param name="pd_config">(C API type: PD_Config*) config</param>
-/// <param name="prog_buffer">(C API type: byte*) The memory buffer of program.</param>
-/// <param name="prog_buffer_size">The size of the model data.</param>
-/// <param name="params_buffer">(C API type: byte*) The memory buffer of the combined parameters file.</param>
-/// <param name="params_buffer_size">The size of the combined parameters data.</param>
-[DllImport(PaddleInferenceCLib)]
-public static extern void PD_ConfigSetModelBuffer(IntPtr pd_config, IntPtr prog_buffer, nint prog_buffer_size, IntPtr params_buffer, nint params_buffer_size);
+    /// <summary>Specify the memory buffer of program and parameter. Used when model and params are loaded directly from memory.</summary>
+    /// <param name="pd_config">(C API type: PD_Config*) config</param>
+    /// <param name="prog_buffer">(C API type: byte*) The memory buffer of program.</param>
+    /// <param name="prog_buffer_size">The size of the model data.</param>
+    /// <param name="params_buffer">(C API type: byte*) The memory buffer of the combined parameters file.</param>
+    /// <param name="params_buffer_size">The size of the combined parameters data.</param>
+    [DllImport(PaddleInferenceCLib)]
+    public static extern void PD_ConfigSetModelBuffer(IntPtr pd_config, IntPtr prog_buffer, nint prog_buffer_size, IntPtr params_buffer, nint params_buffer_size);
 
     /// <summary>A boolean state telling whether the model is set from the CPU memory.</summary>
     /// <param name="pd_config">(C API type: PD_Config*) config</param>
@@ -527,6 +598,10 @@ public static extern void PD_ConfigSetModelBuffer(IntPtr pd_config, IntPtr prog_
     [DllImport(PaddleInferenceCLib)]
     public static extern IntPtr PD_PredictorCreate(IntPtr pd_config);
 
+
+    [DllImport(PaddleInferenceCLib)]
+    public static extern int PD_PredictorCreate2(IntPtr pd_config, IntPtr @out);
+
     /// <summary>Clone a new Predictor</summary>
     /// <param name="pd_predictor">(C API type: PD_Predictor*) predictor</param>
     /// <returns>new predictor.(C API type: PD_Predictor*)</returns>
@@ -588,6 +663,10 @@ public static extern void PD_ConfigSetModelBuffer(IntPtr pd_config, IntPtr prog_
     /// <returns>Whether the function executed successfully</returns>
     [DllImport(PaddleInferenceCLib)]
     public static extern PD_Bool PD_PredictorRun(IntPtr pd_predictor);
+
+
+    [DllImport(PaddleInferenceCLib)]
+    public static extern int PD_PredictorRun2(IntPtr pd_predictor, IntPtr @out);
 
     /// <summary>Clear the intermediate tensors of the predictor</summary>
     /// <param name="pd_predictor">(C API type: PD_Predictor*) predictor</param>

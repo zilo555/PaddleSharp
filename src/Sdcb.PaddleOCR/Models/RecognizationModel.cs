@@ -57,7 +57,7 @@ public abstract class RecognizationModel : OcrBaseModel
     public override void ConfigureDevice(PaddleConfig config, Action<PaddleConfig>? configure = null)
     {
         base.ConfigureDevice(config, configure);
-        if (config.MkldnnEnabled)
+        if (config.OneDnnEnabled)
         {
             if (Version == ModelVersion.V3 || Version == ModelVersion.V4)
             {
