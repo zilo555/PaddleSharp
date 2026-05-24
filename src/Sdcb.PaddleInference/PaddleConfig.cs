@@ -167,6 +167,53 @@ public class PaddleConfig : IDisposable
         }
     }
 
+    /// <summary>
+    /// Gets or sets the process-wide minimum glog severity level.
+    /// </summary>
+    /// <remarks>
+    /// This setting is global to the current process even though it is exposed from <see cref="PaddleConfig"/>.
+    /// Valid levels are 0 (INFO), 1 (WARNING), 2 (ERROR), and 3 (FATAL).
+    /// </remarks>
+    public int GLogMinLevel
+    {
+        get
+        {
+            ThrowIfDisposed();
+            return PaddleAdvancedNativeApi.GetGlogMinLogLevel();
+        }
+        set
+        {
+            ThrowIfDisposed();
+            PaddleAdvancedNativeApi.SetGlogMinLogLevel(value);
+        }
+    }
+
+    /// <summary>
+    /// Registers a process-wide glog redirect callback.
+    /// </summary>
+    /// <param name="callback">The managed callback that receives glog messages.</param>
+    /// <remarks>
+    /// The callback registration is global to the current process and is not scoped to a single config instance.
+    /// </remarks>
+    public void SetGLogRedirectCallback(PaddleGLogCallback callback)
+    {
+        ThrowIfDisposed();
+        if (callback == null)
+        {
+            throw new ArgumentNullException(nameof(callback));
+        }
+        PaddleAdvancedNativeApi.SetGlogRedirectCallback(callback);
+    }
+
+    /// <summary>
+    /// Clears the process-wide glog redirect callback.
+    /// </summary>
+    public void ClearGLogRedirectCallback()
+    {
+        ThrowIfDisposed();
+        PaddleAdvancedNativeApi.SetGlogRedirectCallback(null);
+    }
+
     /// <summary>A boolean state telling whether the memory optimization is activated.</summary>
     public bool MemoryOptimized
     {
@@ -725,7 +772,7 @@ public class PaddleConfig : IDisposable
 
         try
         {
-            return new PaddlePredictor(PaddleNative.PD_PredictorCreate(_ptr));
+            return new PaddlePredictor(PaddleAdvancedNativeApi.CreatePredictor(_ptr));
         }
         finally
         {
