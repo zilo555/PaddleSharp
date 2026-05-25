@@ -17,6 +17,61 @@ public static class LocalFullModels
     public static FullOcrModel ChineseV5 => new(LocalDetectionModel.ChineseV5, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.ChineseV5);
 
     /// <summary>
+    /// English v5 version.
+    /// </summary>
+    public static FullOcrModel EnglishV5 => new(LocalDetectionModel.ChineseV5, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.EnglishV5);
+
+    /// <summary>
+    /// Korean v5 version.
+    /// </summary>
+    public static FullOcrModel KoreanV5 => new(LocalDetectionModel.ChineseV5, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.KoreanV5);
+
+    /// <summary>
+    /// Latin v5 version.
+    /// </summary>
+    public static FullOcrModel LatinV5 => new(LocalDetectionModel.ChineseV5, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.LatinV5);
+
+    /// <summary>
+    /// East Slavic v5 version.
+    /// </summary>
+    public static FullOcrModel EastSlavicV5 => new(LocalDetectionModel.ChineseV5, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.EastSlavicV5);
+
+    /// <summary>
+    /// Thai v5 version.
+    /// </summary>
+    public static FullOcrModel ThaiV5 => new(LocalDetectionModel.ChineseV5, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.ThaiV5);
+
+    /// <summary>
+    /// Greek v5 version.
+    /// </summary>
+    public static FullOcrModel GreekV5 => new(LocalDetectionModel.ChineseV5, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.GreekV5);
+
+    /// <summary>
+    /// Cyrillic v5 version.
+    /// </summary>
+    public static FullOcrModel CyrillicV5 => new(LocalDetectionModel.ChineseV5, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.CyrillicV5);
+
+    /// <summary>
+    /// Arabic v5 version.
+    /// </summary>
+    public static FullOcrModel ArabicV5 => new(LocalDetectionModel.ChineseV5, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.ArabicV5);
+
+    /// <summary>
+    /// Devanagari v5 version.
+    /// </summary>
+    public static FullOcrModel DevanagariV5 => new(LocalDetectionModel.ChineseV5, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.DevanagariV5);
+
+    /// <summary>
+    /// Telugu v5 version.
+    /// </summary>
+    public static FullOcrModel TeluguV5 => new(LocalDetectionModel.ChineseV5, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.TeluguV5);
+
+    /// <summary>
+    /// Tamil v5 version.
+    /// </summary>
+    public static FullOcrModel TamilV5 => new(LocalDetectionModel.ChineseV5, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.TamilV5);
+
+    /// <summary>
     /// Chinese v4, also support English and digits.
     /// </summary>
     public static FullOcrModel ChineseV4 => new(LocalDetectionModel.ChineseV4, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.ChineseV4);
@@ -127,6 +182,17 @@ public static class LocalFullModels
     public static FullOcrModel[] All => new[]
     {
         ChineseV5,
+        EnglishV5,
+        KoreanV5,
+        LatinV5,
+        EastSlavicV5,
+        ThaiV5,
+        GreekV5,
+        CyrillicV5,
+        ArabicV5,
+        DevanagariV5,
+        TeluguV5,
+        TamilV5,
         ChineseV4,
         EnglishV4,
         DevanagariV4,

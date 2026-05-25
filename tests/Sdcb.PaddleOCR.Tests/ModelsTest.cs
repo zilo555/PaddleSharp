@@ -82,6 +82,34 @@ public class ModelsTest(ITestOutputHelper console)
         FastCheck(model);
     }
 
+    [Fact]
+    public void FastCheckOCREnglishV5()
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) && RuntimeInformation.OSArchitecture == Architecture.Arm64)
+        {
+            Console.WriteLine("Skipping EnglishV5 test on macOS arm64 due to known issues: https://github.com/PaddlePaddle/Paddle/issues/72413");
+            return;
+        }
+
+        Console.WriteLine($"Running EnglishV5 test on {RuntimeInformation.OSDescription} ({RuntimeInformation.OSArchitecture})");
+        FullOcrModel model = LocalFullModels.EnglishV5;
+        FastCheck(model);
+    }
+
+    [Fact]
+    public async Task FastCheckOCREnglishV5Online()
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) && RuntimeInformation.OSArchitecture == Architecture.Arm64)
+        {
+            Console.WriteLine("Skipping EnglishV5 online test on macOS arm64 due to known issues: https://github.com/PaddlePaddle/Paddle/issues/72413");
+            return;
+        }
+
+        Console.WriteLine($"Running EnglishV5 online test on {RuntimeInformation.OSDescription} ({RuntimeInformation.OSArchitecture})");
+        FullOcrModel model = await (OnlineFullModels.EnglishV5 with { ClsModel = null }).DownloadAsync();
+        FastCheck(model);
+    }
+
     private void FastCheck(FullOcrModel model)
     {
         // from: https://visualstudio.microsoft.com/wp-content/uploads/2021/11/Home-page-extension-visual-updated.png

@@ -60,6 +60,61 @@ public class LocalRecognizationModel : RecognizationModel
     public static LocalRecognizationModel ChineseV5 => new("mobile-zh-rec", "", ModelVersion.V5);
 
     /// <summary>
+    /// Gets the English V5 local recognition model.
+    /// </summary>
+    public static LocalRecognizationModel EnglishV5 => new("en_PP-OCRv5_mobile_rec", "", ModelVersion.V5);
+
+    /// <summary>
+    /// Gets the Korean V5 local recognition model.
+    /// </summary>
+    public static LocalRecognizationModel KoreanV5 => new("korean_PP-OCRv5_mobile_rec", "", ModelVersion.V5);
+
+    /// <summary>
+    /// Gets the Latin V5 local recognition model.
+    /// </summary>
+    public static LocalRecognizationModel LatinV5 => new("latin_PP-OCRv5_mobile_rec", "", ModelVersion.V5);
+
+    /// <summary>
+    /// Gets the East Slavic V5 local recognition model.
+    /// </summary>
+    public static LocalRecognizationModel EastSlavicV5 => new("eslav_PP-OCRv5_mobile_rec", "", ModelVersion.V5);
+
+    /// <summary>
+    /// Gets the Thai V5 local recognition model.
+    /// </summary>
+    public static LocalRecognizationModel ThaiV5 => new("th_PP-OCRv5_mobile_rec", "", ModelVersion.V5);
+
+    /// <summary>
+    /// Gets the Greek V5 local recognition model.
+    /// </summary>
+    public static LocalRecognizationModel GreekV5 => new("el_PP-OCRv5_mobile_rec", "", ModelVersion.V5);
+
+    /// <summary>
+    /// Gets the Cyrillic V5 local recognition model.
+    /// </summary>
+    public static LocalRecognizationModel CyrillicV5 => new("cyrillic_PP-OCRv5_mobile_rec", "", ModelVersion.V5);
+
+    /// <summary>
+    /// Gets the Arabic V5 local recognition model.
+    /// </summary>
+    public static LocalRecognizationModel ArabicV5 => new("arabic_PP-OCRv5_mobile_rec", "", ModelVersion.V5);
+
+    /// <summary>
+    /// Gets the Devanagari V5 local recognition model.
+    /// </summary>
+    public static LocalRecognizationModel DevanagariV5 => new("devanagari_PP-OCRv5_mobile_rec", "", ModelVersion.V5);
+
+    /// <summary>
+    /// Gets the Telugu V5 local recognition model.
+    /// </summary>
+    public static LocalRecognizationModel TeluguV5 => new("te_PP-OCRv5_mobile_rec", "", ModelVersion.V5);
+
+    /// <summary>
+    /// Gets the Tamil V5 local recognition model.
+    /// </summary>
+    public static LocalRecognizationModel TamilV5 => new("ta_PP-OCRv5_mobile_rec", "", ModelVersion.V5);
+
+    /// <summary>
     /// v4 model for Chinese recognition
     /// (Size: 10.46MB)
     /// </summary>
@@ -190,6 +245,18 @@ public class LocalRecognizationModel : RecognizationModel
     /// </summary>
     public static LocalRecognizationModel[] All => new[]
     {
+        ChineseV5,
+        EnglishV5,
+        KoreanV5,
+        LatinV5,
+        EastSlavicV5,
+        ThaiV5,
+        GreekV5,
+        CyrillicV5,
+        ArabicV5,
+        DevanagariV5,
+        TeluguV5,
+        TamilV5,
         ChineseV3,
         EnglishV3,
         KoreanV3,

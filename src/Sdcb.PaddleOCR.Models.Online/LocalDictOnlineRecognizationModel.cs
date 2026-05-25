@@ -50,6 +50,61 @@ public record LocalDictOnlineRecognizationModel(string Name, string DictName, Ur
     public static LocalDictOnlineRecognizationModel ChineseServerV5 => new("PP-OCRv5_server_rec_infer.tar", "", new Uri("https://paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0/PP-OCRv5_server_rec_infer.tar"), ModelVersion.V5);
 
     /// <summary>
+    /// v5 model for English recognition
+    /// </summary>
+    public static LocalDictOnlineRecognizationModel EnglishV5 => new("en_PP-OCRv5_mobile_rec", "", new Uri("https://paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0/en_PP-OCRv5_mobile_rec_infer.tar"), ModelVersion.V5);
+
+    /// <summary>
+    /// v5 model for Korean recognition
+    /// </summary>
+    public static LocalDictOnlineRecognizationModel KoreanV5 => new("korean_PP-OCRv5_mobile_rec", "", new Uri("https://paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0/korean_PP-OCRv5_mobile_rec_infer.tar"), ModelVersion.V5);
+
+    /// <summary>
+    /// v5 model for Latin-script language recognition
+    /// </summary>
+    public static LocalDictOnlineRecognizationModel LatinV5 => new("latin_PP-OCRv5_mobile_rec", "", new Uri("https://paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0/latin_PP-OCRv5_mobile_rec_infer.tar"), ModelVersion.V5);
+
+    /// <summary>
+    /// v5 model for East Slavic language recognition
+    /// </summary>
+    public static LocalDictOnlineRecognizationModel EastSlavicV5 => new("eslav_PP-OCRv5_mobile_rec", "", new Uri("https://paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0/eslav_PP-OCRv5_mobile_rec_infer.tar"), ModelVersion.V5);
+
+    /// <summary>
+    /// v5 model for Thai recognition
+    /// </summary>
+    public static LocalDictOnlineRecognizationModel ThaiV5 => new("th_PP-OCRv5_mobile_rec", "", new Uri("https://paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0/th_PP-OCRv5_mobile_rec_infer.tar"), ModelVersion.V5);
+
+    /// <summary>
+    /// v5 model for Greek recognition
+    /// </summary>
+    public static LocalDictOnlineRecognizationModel GreekV5 => new("el_PP-OCRv5_mobile_rec", "", new Uri("https://paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0/el_PP-OCRv5_mobile_rec_infer.tar"), ModelVersion.V5);
+
+    /// <summary>
+    /// v5 model for Cyrillic-script language recognition
+    /// </summary>
+    public static LocalDictOnlineRecognizationModel CyrillicV5 => new("cyrillic_PP-OCRv5_mobile_rec", "", new Uri("https://paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0/cyrillic_PP-OCRv5_mobile_rec_infer.tar"), ModelVersion.V5);
+
+    /// <summary>
+    /// v5 model for Arabic-script language recognition
+    /// </summary>
+    public static LocalDictOnlineRecognizationModel ArabicV5 => new("arabic_PP-OCRv5_mobile_rec", "", new Uri("https://paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0/arabic_PP-OCRv5_mobile_rec_infer.tar"), ModelVersion.V5);
+
+    /// <summary>
+    /// v5 model for Devanagari-script language recognition
+    /// </summary>
+    public static LocalDictOnlineRecognizationModel DevanagariV5 => new("devanagari_PP-OCRv5_mobile_rec", "", new Uri("https://paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0/devanagari_PP-OCRv5_mobile_rec_infer.tar"), ModelVersion.V5);
+
+    /// <summary>
+    /// v5 model for Telugu recognition
+    /// </summary>
+    public static LocalDictOnlineRecognizationModel TeluguV5 => new("te_PP-OCRv5_mobile_rec", "", new Uri("https://paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0/te_PP-OCRv5_mobile_rec_infer.tar"), ModelVersion.V5);
+
+    /// <summary>
+    /// v5 model for Tamil recognition
+    /// </summary>
+    public static LocalDictOnlineRecognizationModel TamilV5 => new("ta_PP-OCRv5_mobile_rec", "", new Uri("https://paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0/ta_PP-OCRv5_mobile_rec_infer.tar"), ModelVersion.V5);
+
+    /// <summary>
     /// v4 model for Chinese recognition
     /// (Size: 10.46MB)
     /// </summary>
@@ -236,6 +291,17 @@ public record LocalDictOnlineRecognizationModel(string Name, string DictName, Ur
     {
         ChineseV5,
         ChineseServerV5,
+        EnglishV5,
+        KoreanV5,
+        LatinV5,
+        EastSlavicV5,
+        ThaiV5,
+        GreekV5,
+        CyrillicV5,
+        ArabicV5,
+        DevanagariV5,
+        TeluguV5,
+        TamilV5,
         ChineseV4,
         EnglishV4,
         KoreanV4,

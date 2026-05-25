@@ -36,6 +36,61 @@ public record class OnlineFullModels(OnlineDetectionModel DetModel, OnlineClassi
     public readonly static OnlineFullModels ChineseServerV5 = new(OnlineDetectionModel.ChineseServerV5, OnlineClassificationModel.ChineseMobileV2, LocalDictOnlineRecognizationModel.ChineseV5);
 
     /// <summary>
+    /// The English V5 version.
+    /// </summary>
+    public readonly static OnlineFullModels EnglishV5 = new(OnlineDetectionModel.ChineseV5, OnlineClassificationModel.ChineseMobileV2, LocalDictOnlineRecognizationModel.EnglishV5);
+
+    /// <summary>
+    /// The Korean V5 version.
+    /// </summary>
+    public readonly static OnlineFullModels KoreanV5 = new(OnlineDetectionModel.ChineseV5, OnlineClassificationModel.ChineseMobileV2, LocalDictOnlineRecognizationModel.KoreanV5);
+
+    /// <summary>
+    /// The Latin V5 version.
+    /// </summary>
+    public readonly static OnlineFullModels LatinV5 = new(OnlineDetectionModel.ChineseV5, OnlineClassificationModel.ChineseMobileV2, LocalDictOnlineRecognizationModel.LatinV5);
+
+    /// <summary>
+    /// The East Slavic V5 version.
+    /// </summary>
+    public readonly static OnlineFullModels EastSlavicV5 = new(OnlineDetectionModel.ChineseV5, OnlineClassificationModel.ChineseMobileV2, LocalDictOnlineRecognizationModel.EastSlavicV5);
+
+    /// <summary>
+    /// The Thai V5 version.
+    /// </summary>
+    public readonly static OnlineFullModels ThaiV5 = new(OnlineDetectionModel.ChineseV5, OnlineClassificationModel.ChineseMobileV2, LocalDictOnlineRecognizationModel.ThaiV5);
+
+    /// <summary>
+    /// The Greek V5 version.
+    /// </summary>
+    public readonly static OnlineFullModels GreekV5 = new(OnlineDetectionModel.ChineseV5, OnlineClassificationModel.ChineseMobileV2, LocalDictOnlineRecognizationModel.GreekV5);
+
+    /// <summary>
+    /// The Cyrillic V5 version.
+    /// </summary>
+    public readonly static OnlineFullModels CyrillicV5 = new(OnlineDetectionModel.ChineseV5, OnlineClassificationModel.ChineseMobileV2, LocalDictOnlineRecognizationModel.CyrillicV5);
+
+    /// <summary>
+    /// The Arabic V5 version.
+    /// </summary>
+    public readonly static OnlineFullModels ArabicV5 = new(OnlineDetectionModel.ChineseV5, OnlineClassificationModel.ChineseMobileV2, LocalDictOnlineRecognizationModel.ArabicV5);
+
+    /// <summary>
+    /// The Devanagari V5 version.
+    /// </summary>
+    public readonly static OnlineFullModels DevanagariV5 = new(OnlineDetectionModel.ChineseV5, OnlineClassificationModel.ChineseMobileV2, LocalDictOnlineRecognizationModel.DevanagariV5);
+
+    /// <summary>
+    /// The Telugu V5 version.
+    /// </summary>
+    public readonly static OnlineFullModels TeluguV5 = new(OnlineDetectionModel.ChineseV5, OnlineClassificationModel.ChineseMobileV2, LocalDictOnlineRecognizationModel.TeluguV5);
+
+    /// <summary>
+    /// The Tamil V5 version.
+    /// </summary>
+    public readonly static OnlineFullModels TamilV5 = new(OnlineDetectionModel.ChineseV5, OnlineClassificationModel.ChineseMobileV2, LocalDictOnlineRecognizationModel.TamilV5);
+
+    /// <summary>
     /// The Chinese V4 version.
     /// </summary>
     public readonly static OnlineFullModels ChineseV4 = new(OnlineDetectionModel.ChineseV4, OnlineClassificationModel.ChineseMobileV2, LocalDictOnlineRecognizationModel.ChineseV4);
