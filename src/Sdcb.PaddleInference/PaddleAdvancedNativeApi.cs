@@ -83,14 +83,24 @@ internal static class PaddleAdvancedNativeApi
         ThrowIfLastError("Setting GLog minimum log level");
     }
 
+    public static PaddleGLogCallback? GetGlogRedirectCallback()
+    {
+        EnsureV2CapiAvailable("GLog handler");
+
+        lock (GlogSync)
+        {
+            return _glogRedirectCallback;
+        }
+    }
+
     public static void SetGlogRedirectCallback(PaddleGLogCallback? callback)
     {
-        EnsureV2CapiAvailable("GLog redirect callback");
+        EnsureV2CapiAvailable("GLog handler");
 
         lock (GlogSync)
         {
             PaddleNative.PD_SetGlogRedirectCallback(callback == null ? null! : NativeGlogRedirectCallback, IntPtr.Zero);
-            ThrowIfLastError("Setting GLog redirect callback");
+            ThrowIfLastError("Setting GLog handler");
             _glogRedirectCallback = callback;
         }
     }
@@ -116,21 +126,9 @@ internal static class PaddleAdvancedNativeApi
         }
 
         callback(
-            ConvertSeverity(severity),
+            severity,
             file.ANSIToString() ?? string.Empty,
             line,
             message.ANSIToString(checked((int)messageLen)) ?? string.Empty);
-    }
-
-    private static PaddleGLogSeverity ConvertSeverity(int severity)
-    {
-        return severity switch
-        {
-            0 => PaddleGLogSeverity.Info,
-            1 => PaddleGLogSeverity.Warning,
-            2 => PaddleGLogSeverity.Error,
-            3 => PaddleGLogSeverity.Fatal,
-            _ => PaddleGLogSeverity.Unknown,
-        };
     }
 }

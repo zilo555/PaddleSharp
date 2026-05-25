@@ -5,55 +5,55 @@ public class PaddleConfigAdvancedApiTests
     [Fact]
     public void GLogMinLevelCanRoundTrip()
     {
-        using PaddleConfig config = new();
         if (!PaddleAdvancedNativeApi.IsV2CapiAvailable)
         {
             return;
         }
 
-        int originalLevel = config.GLogMinLevel;
+        int originalLevel = PaddleConfig.GLogMinLevel;
         int targetLevel = originalLevel == 3 ? 2 : 3;
 
         try
         {
-            config.GLogMinLevel = targetLevel;
-            Assert.Equal(targetLevel, config.GLogMinLevel);
+            PaddleConfig.GLogMinLevel = targetLevel;
+            Assert.Equal(targetLevel, PaddleConfig.GLogMinLevel);
         }
         finally
         {
-            config.GLogMinLevel = originalLevel;
+            PaddleConfig.GLogMinLevel = originalLevel;
         }
     }
 
     [Fact]
-    public void GLogRedirectCallbackCanRegisterAndClear()
+    public void GLogHandlerCanRoundTripAndClear()
     {
-        using PaddleConfig config = new();
         if (!PaddleAdvancedNativeApi.IsV2CapiAvailable)
         {
             return;
         }
 
-        config.SetGLogRedirectCallback(StaticGlogCallback);
-        config.ClearGLogRedirectCallback();
+        PaddleGLogCallback handler = StaticGlogCallback;
+        PaddleConfig.GLogHandler = handler;
+        Assert.Same(handler, PaddleConfig.GLogHandler);
+
+        PaddleConfig.GLogHandler = null;
+        Assert.Null(PaddleConfig.GLogHandler);
     }
 
     [Fact]
     public void InvalidGLogMinLevelThrowsManagedException()
     {
-        using PaddleConfig config = new();
         if (!PaddleAdvancedNativeApi.IsV2CapiAvailable)
         {
             return;
         }
 
-        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => config.GLogMinLevel = 4);
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => PaddleConfig.GLogMinLevel = 4);
         Assert.False(string.IsNullOrWhiteSpace(exception.Message));
     }
 
-    private static void StaticGlogCallback(PaddleGLogSeverity severity, string file, int line, string message)
+    private static void StaticGlogCallback(int severity, string file, int line, string message)
     {
-        Assert.True(Enum.IsDefined(typeof(PaddleGLogSeverity), severity));
         Assert.NotNull(file);
         Assert.NotNull(message);
     }

@@ -171,47 +171,38 @@ public class PaddleConfig : IDisposable
     /// Gets or sets the process-wide minimum glog severity level.
     /// </summary>
     /// <remarks>
-    /// This setting is global to the current process even though it is exposed from <see cref="PaddleConfig"/>.
+    /// This setting is global to the current process.
     /// Valid levels are 0 (INFO), 1 (WARNING), 2 (ERROR), and 3 (FATAL).
     /// </remarks>
-    public int GLogMinLevel
+    public static int GLogMinLevel
     {
         get
         {
-            ThrowIfDisposed();
             return PaddleAdvancedNativeApi.GetGlogMinLogLevel();
         }
         set
         {
-            ThrowIfDisposed();
             PaddleAdvancedNativeApi.SetGlogMinLogLevel(value);
         }
     }
 
     /// <summary>
-    /// Registers a process-wide glog redirect callback.
+    /// Gets or sets the process-wide glog handler.
     /// </summary>
-    /// <param name="callback">The managed callback that receives glog messages.</param>
     /// <remarks>
-    /// The callback registration is global to the current process and is not scoped to a single config instance.
+    /// This handler registration is global to the current process.
+    /// Set this property to <see langword="null"/> to clear the current handler.
     /// </remarks>
-    public void SetGLogRedirectCallback(PaddleGLogCallback callback)
+    public static PaddleGLogCallback? GLogHandler
     {
-        ThrowIfDisposed();
-        if (callback == null)
+        get
         {
-            throw new ArgumentNullException(nameof(callback));
+            return PaddleAdvancedNativeApi.GetGlogRedirectCallback();
         }
-        PaddleAdvancedNativeApi.SetGlogRedirectCallback(callback);
-    }
-
-    /// <summary>
-    /// Clears the process-wide glog redirect callback.
-    /// </summary>
-    public void ClearGLogRedirectCallback()
-    {
-        ThrowIfDisposed();
-        PaddleAdvancedNativeApi.SetGlogRedirectCallback(null);
+        set
+        {
+            PaddleAdvancedNativeApi.SetGlogRedirectCallback(value);
+        }
     }
 
     /// <summary>A boolean state telling whether the memory optimization is activated.</summary>
