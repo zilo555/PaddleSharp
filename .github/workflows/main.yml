@@ -16,6 +16,7 @@ jobs:
     strategy:
       matrix:
         runs-on: [windows-2022, ubuntu-22.04, ubuntu-22.04-arm, macos-15, macos-15-intel]
+      fail-fast: false
     steps:
     - uses: actions/checkout@v5
     - name: Setup NuGet Source
