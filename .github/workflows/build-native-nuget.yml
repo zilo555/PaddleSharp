@@ -198,7 +198,7 @@ jobs:
         echo NUPKG_PATH="${{ github.workspace }}/nupkgs/${PKG_ID}.${{ env.PADDLE_VERSION }}.${{ github.run_number }}.nupkg" >> $GITHUB_ENV
         
     - name: Upload nupkg artifact
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v7
       with:
         name: nuget-${{ matrix.title }}
         path: ${{ env.NUPKG_PATH }}
