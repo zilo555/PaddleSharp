@@ -19,8 +19,6 @@ internal static class Utils
         Type rootType = version switch
         {
             ModelVersion.V2 => typeof(LocalFullModels),
-            ModelVersion.V3 => typeof(LocalV3.KnownModels),
-            ModelVersion.V4 => typeof(LocalV4.KnownModels),
             ModelVersion.V5 => typeof(LocalV5.KnownModels),
             _ => throw new NotImplementedException()
         };
