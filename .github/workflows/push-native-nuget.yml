@@ -2,7 +2,7 @@
 on:
   push:
     branches:
-      - feature/3.0
+      - feature/3.3
     paths:
       - .github/workflows/push-native-nuget.yml
   workflow_dispatch:
