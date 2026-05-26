@@ -114,99 +114,96 @@ public class PaddleOcrRecognizer : IDisposable
             return 1.0 * size.Width / size.Height * modelHeight;
         }));
 
-        PaddlePredictor predictor = _p;
-        lock (predictor)
+        using PaddlePredictor predictor = _p.Clone();
+        Mat[] normalizeds = null!;
+        try
         {
-            Mat[] normalizeds = null!;
+            normalizeds = srcs
+                .Select(src =>
+                {
+                    using Mat channel3 = src.Channels() switch
+                    {
+                        4 => src.CvtColor(ColorConversionCodes.RGBA2BGR),
+                        1 => src.CvtColor(ColorConversionCodes.GRAY2RGB),
+                        3 => src.Clone(),
+                        var x => throw new Exception($"Unexpect src channel: {x}, allow: (1/3/4)")
+                    };
+                    using Mat resized = ResizePadding(channel3, modelHeight, maxWidth);
+                    return Normalize(resized);
+                })
+                .ToArray();
+
+            using (PaddleTensor input = predictor.GetInputTensor(predictor.InputNames[0]))
+            {
+                int channel = normalizeds[0].Channels();
+                input.Shape = new[] { normalizeds.Length, channel, modelHeight, maxWidth };
+                float[] data = ExtractMat(normalizeds, channel, modelHeight, maxWidth);
+                input.SetData(data);
+            }
+        }
+        finally
+        {
+            foreach (Mat normalized in normalizeds)
+            {
+                normalized.Dispose();
+            }
+        }
+
+        if (!predictor.Run())
+        {
+            throw new Exception($"PaddlePredictor(Recognizer) run failed.");
+        }
+
+        using (PaddleTensor output = predictor.GetOutputTensor(predictor.OutputNames[0]))
+        {
+            float[] data = output.GetData<float>();
+            int[] shape = output.Shape;
+
+            GCHandle dataHandle = default;
             try
             {
-                normalizeds = srcs
-                    .Select(src =>
+                dataHandle = GCHandle.Alloc(data, GCHandleType.Pinned);
+                IntPtr dataPtr = dataHandle.AddrOfPinnedObject();
+                int labelCount = shape[2];
+                int charCount = shape[1];
+
+                return Enumerable.Range(0, shape[0])
+                    .Select(i =>
                     {
-                        using Mat channel3 = src.Channels() switch
+                        StringBuilder sb = new();
+                        int lastIndex = 0;
+                        float score = 0;
+                        List<RecognizedChar> ocrRecognizerResultSingleChars = new();
+                        int charIndex = 0;
+                        for (int n = 0; n < charCount; ++n)
                         {
-                            4 => src.CvtColor(ColorConversionCodes.RGBA2BGR),
-                            1 => src.CvtColor(ColorConversionCodes.GRAY2RGB),
-                            3 => src.Clone(),
-                            var x => throw new Exception($"Unexpect src channel: {x}, allow: (1/3/4)")
-                        };
-                        using Mat resized = ResizePadding(channel3, modelHeight, maxWidth);
-                        return Normalize(resized);
+                            using Mat mat = Mat.FromPixelData(1, labelCount, MatType.CV_32FC1, dataPtr + (n + i * charCount) * labelCount * sizeof(float));
+                            int[] maxIdx = new int[2];
+                            mat.MinMaxIdx(out double _, out double maxVal, new int[0], maxIdx);
+
+                            if (maxIdx[1] > 0 && (!(n > 0 && maxIdx[1] == lastIndex)))
+                            {
+                                score += (float)maxVal;
+                                string character = Model.GetLabelByIndex(maxIdx[1]);
+                                sb.Append(character);
+
+                                ocrRecognizerResultSingleChars.Add(new RecognizedChar(
+                                    character,
+                                    (float)maxVal,
+                                    charIndex
+                                ));
+                                charIndex++;
+                            }
+                            lastIndex = maxIdx[1];
+                        }
+
+                        return new PaddleOcrRecognizerResult(sb.ToString(), score / sb.Length, ocrRecognizerResultSingleChars);
                     })
                     .ToArray();
-
-                using (PaddleTensor input = predictor.GetInputTensor(predictor.InputNames[0]))
-                {
-                    int channel = normalizeds[0].Channels();
-                    input.Shape = new[] { normalizeds.Length, channel, modelHeight, maxWidth };
-                    float[] data = ExtractMat(normalizeds, channel, modelHeight, maxWidth);
-                    input.SetData(data);
-                }
             }
             finally
             {
-                foreach (Mat normalized in normalizeds)
-                {
-                    normalized.Dispose();
-                }
-            }
-
-            if (!predictor.Run())
-            {
-                throw new Exception($"PaddlePredictor(Recognizer) run failed.");
-            }
-
-            using (PaddleTensor output = predictor.GetOutputTensor(predictor.OutputNames[0]))
-            {
-                float[] data = output.GetData<float>();
-                int[] shape = output.Shape;
-
-                GCHandle dataHandle = default;
-                try
-                {
-                    dataHandle = GCHandle.Alloc(data, GCHandleType.Pinned);
-                    IntPtr dataPtr = dataHandle.AddrOfPinnedObject();
-                    int labelCount = shape[2];
-                    int charCount = shape[1];
-
-                    return Enumerable.Range(0, shape[0])
-                        .Select(i =>
-                        {
-                            StringBuilder sb = new();
-                            int lastIndex = 0;
-                            float score = 0;
-                            List<RecognizedChar> ocrRecognizerResultSingleChars = new();
-                            int charIndex = 0;
-                            for (int n = 0; n < charCount; ++n)
-                            {
-                                using Mat mat = Mat.FromPixelData(1, labelCount, MatType.CV_32FC1, dataPtr + (n + i * charCount) * labelCount * sizeof(float));
-                                int[] maxIdx = new int[2];
-                                mat.MinMaxIdx(out double _, out double maxVal, new int[0], maxIdx);
-
-                                if (maxIdx[1] > 0 && (!(n > 0 && maxIdx[1] == lastIndex)))
-                                {
-                                    score += (float)maxVal;
-                                    string character = Model.GetLabelByIndex(maxIdx[1]);
-                                    sb.Append(character);
-                                    
-                                    ocrRecognizerResultSingleChars.Add(new RecognizedChar(
-                                        character,
-                                        (float)maxVal,
-                                        charIndex
-                                    ));
-                                    charIndex++;
-                                }
-                                lastIndex = maxIdx[1];
-                            }
-
-                            return new PaddleOcrRecognizerResult(sb.ToString(), score / sb.Length, ocrRecognizerResultSingleChars);
-                        })
-                        .ToArray();
-                }
-                finally
-                {
-                    dataHandle.Free();
-                }
+                dataHandle.Free();
             }
         }
     }
