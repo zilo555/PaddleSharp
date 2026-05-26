@@ -169,6 +169,44 @@ public class PaddleConfig : IDisposable
         }
     }
 
+    /// <summary>
+    /// Gets or sets the process-wide minimum glog severity level.
+    /// </summary>
+    /// <remarks>
+    /// This setting is global to the current process.
+    /// Valid levels are 0 (INFO), 1 (WARNING), 2 (ERROR), and 3 (FATAL).
+    /// </remarks>
+    public static int GLogMinLevel
+    {
+        get
+        {
+            return PaddleAdvancedNativeApi.GetGlogMinLogLevel();
+        }
+        set
+        {
+            PaddleAdvancedNativeApi.SetGlogMinLogLevel(value);
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the process-wide glog handler.
+    /// </summary>
+    /// <remarks>
+    /// This handler registration is global to the current process.
+    /// Set this property to <see langword="null"/> to clear the current handler.
+    /// </remarks>
+    public static PaddleGLogCallback? GLogHandler
+    {
+        get
+        {
+            return PaddleAdvancedNativeApi.GetGlogRedirectCallback();
+        }
+        set
+        {
+            PaddleAdvancedNativeApi.SetGlogRedirectCallback(value);
+        }
+    }
+
     /// <summary>A boolean state telling whether the memory optimization is activated.</summary>
     public bool MemoryOptimized
     {
@@ -194,7 +232,8 @@ public class PaddleConfig : IDisposable
         }
     }
 
-    /// <summary>A boolean state telling whether to use the MKLDNN.</summary>
+    /// <summary>A boolean state telling whether to use the MKLDNN, this is deprecated, please use <see cref="OneDnnEnabled"/> instead.</summary>
+    [Obsolete("MKLDNN is renamed to OneDNN since version 3.2.0, please use OneDnnEnabled instead.")]
     public bool MkldnnEnabled
     {
         get
@@ -213,6 +252,29 @@ public class PaddleConfig : IDisposable
             else if (MkldnnEnabled)
             {
                 Console.WriteLine($"Warn: Mkldnn cannot disabled after enabled.");
+            }
+        }
+    }
+
+    /// <summary>A boolean state telling whether to use the ONEDNN.</summary>
+    public bool OneDnnEnabled
+    {
+        get
+        {
+            ThrowIfDisposed();
+            return PaddleNative.PD_ConfigOnednnEnabled(_ptr) != 0;
+        }
+        set
+        {
+            ThrowIfDisposed();
+
+            if (value)
+            {
+                PaddleNative.PD_ConfigEnableONEDNN(_ptr);
+            }
+            else if (OneDnnEnabled)
+            {
+                Console.WriteLine($"Warn: OneDnn cannot disabled after enabled.");
             }
         }
     }
@@ -703,7 +765,7 @@ public class PaddleConfig : IDisposable
 
         try
         {
-            return new PaddlePredictor(PaddleNative.PD_PredictorCreate(_ptr));
+            return new PaddlePredictor(PaddleAdvancedNativeApi.CreatePredictor(_ptr));
         }
         finally
         {

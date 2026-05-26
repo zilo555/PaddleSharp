@@ -185,15 +185,8 @@ public class PaddlePredictor : IDisposable
     /// <returns>true if prediction runs successfully; false otherwise.</returns>
     public bool Run()
     {
-        try
-        {
-            ThrowIfDisposed();
-            return PaddleNative.PD_PredictorRun(_ptr) != 0;
-        }
-        catch (SEHException)
-        {
-            return false;
-        }
+        ThrowIfDisposed();
+        return PaddleAdvancedNativeApi.RunPredictor(_ptr);
     }
 
     /// <summary>Clear the intermediate tensors of the predictor</summary>

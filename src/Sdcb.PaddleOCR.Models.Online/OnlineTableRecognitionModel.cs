@@ -18,9 +18,9 @@ public class OnlineTableRecognitionModel
     public string Name { get; }
 
     /// <summary>
-    /// Gets the download URI for the model.
+    /// Gets the download sources for the model.
     /// </summary>
-    public Uri ModelDownloadUri { get; }
+    public IModelDownloadSource[] Sources { get; }
 
     /// <summary>
     /// Gets the name of the dictionary.
@@ -36,12 +36,12 @@ public class OnlineTableRecognitionModel
     /// Initializes a new instance of the <see cref="OnlineTableRecognitionModel"/> class.
     /// </summary>
     /// <param name="name">The name of the model.</param>
-    /// <param name="modelDownloadUri">The download URI for the model.</param>
+    /// <param name="sources">The download sources for the model.</param>
     /// <param name="dictName">The name of the dictionary.</param>
-    public OnlineTableRecognitionModel(string name, Uri modelDownloadUri, string dictName)
+    public OnlineTableRecognitionModel(string name, IModelDownloadSource[] sources, string dictName)
     {
         Name = name;
-        ModelDownloadUri = modelDownloadUri;
+        Sources = sources;
         DictName = dictName;
     }
 
@@ -52,7 +52,7 @@ public class OnlineTableRecognitionModel
     /// <returns>The downloaded table recognition model.</returns>
     public async Task<TableRecognitionModel> DownloadAsync(CancellationToken cancellationToken = default)
     {
-        await Utils.DownloadAndExtractAsync(Name, ModelDownloadUri, RootDirectory, cancellationToken);
+        await Utils.DownloadAndExtractAsync(Name, Sources, RootDirectory, cancellationToken);
         return new StreamDictTableRecognizationModel(RootDirectory, SharedUtils.LoadDicts(DictName));
     }
 
@@ -61,7 +61,7 @@ public class OnlineTableRecognitionModel
     /// </summary>
     public static OnlineTableRecognitionModel EnglishMobileV2_SLANET => new(
         "en_ppstructure_mobile_v2.0_SLANet",
-        new Uri("https://paddleocr.bj.bcebos.com/ppstructure/models/slanet/en_ppstructure_mobile_v2.0_SLANet_infer.tar"),
+        ModelDownloadSources.Create("https://paddleocr.bj.bcebos.com/ppstructure/models/slanet/en_ppstructure_mobile_v2.0_SLANet_infer.tar"),
         "table_structure_dict.txt");
 
     /// <summary>
@@ -69,7 +69,7 @@ public class OnlineTableRecognitionModel
     /// </summary>
     public static OnlineTableRecognitionModel ChineseMobileV2_SLANET => new(
         "ch_ppstructure_mobile_v2.0_SLANet",
-        new Uri("https://paddleocr.bj.bcebos.com/ppstructure/models/slanet/ch_ppstructure_mobile_v2.0_SLANet_infer.tar"),
+        ModelDownloadSources.Create("https://paddleocr.bj.bcebos.com/ppstructure/models/slanet/ch_ppstructure_mobile_v2.0_SLANet_infer.tar"),
         "table_structure_dict_ch.txt");
 
     /// <summary>

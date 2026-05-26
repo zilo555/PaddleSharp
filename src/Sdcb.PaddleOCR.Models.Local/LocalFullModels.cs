@@ -1,125 +1,69 @@
 ﻿namespace Sdcb.PaddleOCR.Models.Local;
 
 /// <summary>
-/// Provides a collection of all available OCR models for PaddleOCR in local version 3.
+/// Provides a collection of the recommended local OCR models.
 /// </summary>
 public static class LocalFullModels
 {
-    // delete because too large(>100MB)
-    ///// <summary>
-    ///// Chinese server v4, also support English and digits.
-    ///// </summary>
-    //public static FullOcrModel ChineseServerV4 => new(LocalDetectionModel.ChineseServerV4, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.ChineseV4);
-
     /// <summary>
     /// Chinise v5 version
     /// </summary>
     public static FullOcrModel ChineseV5 => new(LocalDetectionModel.ChineseV5, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.ChineseV5);
 
     /// <summary>
-    /// Chinese v4, also support English and digits.
+    /// English v5 version.
     /// </summary>
-    public static FullOcrModel ChineseV4 => new(LocalDetectionModel.ChineseV4, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.ChineseV4);
+    public static FullOcrModel EnglishV5 => new(LocalDetectionModel.ChineseV5, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.EnglishV5);
 
     /// <summary>
-    /// English v4 version.
+    /// Korean v5 version.
     /// </summary>
-    public static FullOcrModel EnglishV4 => new(LocalDetectionModel.ChineseV4, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.EnglishV4);
+    public static FullOcrModel KoreanV5 => new(LocalDetectionModel.ChineseV5, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.KoreanV5);
 
     /// <summary>
-    /// The Korean V4 version.
+    /// Latin v5 version.
     /// </summary>
-    public static FullOcrModel KoreanV4 => new(LocalDetectionModel.ChineseV4, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.KoreanV4);
+    public static FullOcrModel LatinV5 => new(LocalDetectionModel.ChineseV5, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.LatinV5);
 
     /// <summary>
-    /// The Japan V4 version.
+    /// East Slavic v5 version.
     /// </summary>
-    public static FullOcrModel JapanV4 => new(LocalDetectionModel.ChineseV4, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.JapanV4);
+    public static FullOcrModel EastSlavicV5 => new(LocalDetectionModel.ChineseV5, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.EastSlavicV5);
 
     /// <summary>
-    /// The Telugu V4 version.
+    /// Thai v5 version.
     /// </summary>
-    public static FullOcrModel TeluguV4 => new(LocalDetectionModel.ChineseV4, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.TeluguV4);
+    public static FullOcrModel ThaiV5 => new(LocalDetectionModel.ChineseV5, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.ThaiV5);
 
     /// <summary>
-    /// The Kannada V4 version.
+    /// Greek v5 version.
     /// </summary>
-    public static FullOcrModel KannadaV4 => new(LocalDetectionModel.ChineseV4, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.KannadaV4);
+    public static FullOcrModel GreekV5 => new(LocalDetectionModel.ChineseV5, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.GreekV5);
 
     /// <summary>
-    /// The Tamil V4 version.
+    /// Cyrillic v5 version.
     /// </summary>
-    public static FullOcrModel TamilV4 => new(LocalDetectionModel.ChineseV4, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.TamilV4);
+    public static FullOcrModel CyrillicV5 => new(LocalDetectionModel.ChineseV5, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.CyrillicV5);
 
     /// <summary>
-    /// The Arabic V4 version.
+    /// Arabic v5 version.
     /// </summary>
-    public static FullOcrModel ArabicV4 => new(LocalDetectionModel.ChineseV4, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.ArabicV4);
+    public static FullOcrModel ArabicV5 => new(LocalDetectionModel.ChineseV5, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.ArabicV5);
 
     /// <summary>
-    /// The Devanagari V4 version.
+    /// Devanagari v5 version.
     /// </summary>
-    public static FullOcrModel DevanagariV4 => new(LocalDetectionModel.ChineseV4, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.DevanagariV4);
+    public static FullOcrModel DevanagariV5 => new(LocalDetectionModel.ChineseV5, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.DevanagariV5);
 
     /// <summary>
-    /// Provides the OCR model for Chinese language.
+    /// Telugu v5 version.
     /// </summary>
-    public static FullOcrModel ChineseV3 => new(LocalDetectionModel.ChineseV3, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.ChineseV3);
+    public static FullOcrModel TeluguV5 => new(LocalDetectionModel.ChineseV5, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.TeluguV5);
 
     /// <summary>
-    /// Provides the OCR model for English language.
+    /// Tamil v5 version.
     /// </summary>
-    public static FullOcrModel EnglishV3 => new(LocalDetectionModel.EnglishV3, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.EnglishV3);
-
-    /// <summary>
-    /// Provides the OCR model for Korean language.
-    /// </summary>
-    public static FullOcrModel KoreanV3 => new(LocalDetectionModel.MultiLanguageV3, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.KoreanV3);
-
-    /// <summary>
-    /// Provides the OCR model for Japanese language.
-    /// </summary>
-    public static FullOcrModel JapanV3 => new(LocalDetectionModel.MultiLanguageV3, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.JapanV3);
-
-    /// <summary>
-    /// Provides the OCR model for Traditional Chinese language.
-    /// </summary>
-    public static FullOcrModel TraditionalChineseV3 => new(LocalDetectionModel.ChineseV3, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.TraditionalChineseV3);
-
-    /// <summary>
-    /// Provides the OCR model for Telugu language.
-    /// </summary>
-    public static FullOcrModel TeluguV3 => new(LocalDetectionModel.MultiLanguageV3, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.TeluguV3);
-
-    /// <summary>
-    /// Provides the OCR model for Kannada language.
-    /// </summary>
-    public static FullOcrModel KannadaV3 => new(LocalDetectionModel.MultiLanguageV3, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.KannadaV3);
-
-    /// <summary>
-    /// Provides the OCR model for Tamil language.
-    /// </summary>
-    public static FullOcrModel TamilV3 => new(LocalDetectionModel.MultiLanguageV3, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.TamilV3);
-
-    /// <summary>
-    /// Provides the OCR model for Latin language.
-    /// </summary>
-    public static FullOcrModel LatinV3 => new(LocalDetectionModel.MultiLanguageV3, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.LatinV3);
-
-    /// <summary>
-    /// Provides the OCR model for Arabic language.
-    /// </summary>
-    public static FullOcrModel ArabicV3 => new(LocalDetectionModel.MultiLanguageV3, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.ArabicV3);
-
-    /// <summary>
-    /// Provides the OCR model for Cyrillic language.
-    /// </summary>
-    public static FullOcrModel CyrillicV3 => new(LocalDetectionModel.MultiLanguageV3, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.CyrillicV3);
-
-    /// <summary>
-    /// Provides the OCR model for Devanagari language.
-    /// </summary>
-    public static FullOcrModel DevanagariV3 => new(LocalDetectionModel.MultiLanguageV3, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.DevanagariV3);
+    public static FullOcrModel TamilV5 => new(LocalDetectionModel.ChineseV5, LocalClassificationModel.ChineseMobileV2, LocalRecognizationModel.TamilV5);
 
     /// <summary>
     /// Provides an array of all available OCR models for PaddleOCR
@@ -127,26 +71,16 @@ public static class LocalFullModels
     public static FullOcrModel[] All => new[]
     {
         ChineseV5,
-        ChineseV4,
-        EnglishV4,
-        DevanagariV4,
-        ArabicV4,
-        TamilV4,
-        KannadaV4,
-        TeluguV4,
-        JapanV4,
-        KoreanV4,
-        ChineseV3,
-        EnglishV3,
-        KoreanV3,
-        JapanV3,
-        TraditionalChineseV3,
-        TeluguV3,
-        KannadaV3,
-        TamilV3,
-        LatinV3,
-        ArabicV3,
-        CyrillicV3,
-        DevanagariV3,
+        EnglishV5,
+        KoreanV5,
+        LatinV5,
+        EastSlavicV5,
+        ThaiV5,
+        GreekV5,
+        CyrillicV5,
+        ArabicV5,
+        DevanagariV5,
+        TeluguV5,
+        TamilV5,
     };
 }

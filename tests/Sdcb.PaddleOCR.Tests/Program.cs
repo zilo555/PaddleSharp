@@ -1,8 +1,10 @@
 ﻿using OpenCvSharp;
+using Sdcb.PaddleInference;
 using Sdcb.PaddleOCR.Models;
+using Sdcb.PaddleOCR.Models.Local;
 using Sdcb.PaddleOCR.Models.Online;
 
-//[assembly: Xunit.CollectionBehavior(DisableTestParallelization = true)]
+[assembly: Xunit.CollectionBehavior(DisableTestParallelization = true)]
 
 namespace Sdcb.PaddleOCR.Tests;
 
@@ -10,8 +12,9 @@ internal class Program
 {
     public static async Task Main()
     {
-        Environment.SetEnvironmentVariable("GLOG_v", "0");
-        FullOcrModel model = await OnlineFullModels.ChineseV5.DownloadAsync();
+        //Environment.SetEnvironmentVariable("GLOG_v", "10086");
+        FullOcrModel model = await OnlineFullModels.ChineseV4.DownloadAsync();
+        //FullOcrModel model = LocalFullModels.ChineseV5;
         FastCheck(model);
     }
 

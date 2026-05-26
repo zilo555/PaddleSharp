@@ -6,13 +6,20 @@
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
 | Sdcb.PaddleOCR                | [![NuGet](https://img.shields.io/nuget/v/Sdcb.PaddleOCR.svg)](https://nuget.org/packages/Sdcb.PaddleOCR)                               | PaddleOCR library(based on Sdcb.PaddleInference) ⚙️           |
 | Sdcb.PaddleOCR.Models.Online  | [![NuGet](https://img.shields.io/nuget/v/Sdcb.PaddleOCR.Models.Online.svg)](https://nuget.org/packages/Sdcb.PaddleOCR.Models.Online)   | Online PaddleOCR models, will download when first using 🌐    |
-| Sdcb.PaddleOCR.Models.Local   | [![NuGet](https://img.shields.io/nuget/v/Sdcb.PaddleOCR.Models.Local.svg)](https://nuget.org/packages/Sdcb.PaddleOCR.Models.Local)     | Local models, relies on Shared, LocalV3 and LocalV4 models 🏠 |
+| Sdcb.PaddleOCR.Models.Local   | [![NuGet](https://img.shields.io/nuget/v/Sdcb.PaddleOCR.Models.Local.svg)](https://nuget.org/packages/Sdcb.PaddleOCR.Models.Local)     | Recommended local PaddleOCR V5 models 🏠 |
+
+## Local package note
+
+`Sdcb.PaddleOCR.Models.Local` now exposes the recommended local V5 models only.
+
+- Install `Sdcb.PaddleOCR.Models.Local` when you want the default local OCR experience.
+- This package only contains the maintained local V5 entry points.
 
 ## Language supports
 
 Please refer to https://github.com/PaddlePaddle/PaddleOCR/blob/release/2.5/doc/doc_en/models_list_en.md to check language support models.
 
-Just replace the `.ChineseV3` in demo code with your speicific language, then you can use the language.
+Just replace the `.ChineseV5` in demo code with your speicific language, then you can use the language.
 
 ## Usage
 
@@ -28,7 +35,7 @@ Just replace the `.ChineseV3` in demo code with your speicific language, then yo
 
 2. Using following C# code to get result:
    ```csharp
-   FullOcrModel model = LocalFullModels.ChineseV3;
+    FullOcrModel model = LocalFullModels.ChineseV5;
    
    byte[] sampleImageData;
    string sampleImageUrl = @"https://www.tp-link.com.cn/content/images2017/gallery/4288_1920.jpg";
@@ -133,7 +140,7 @@ using (HttpClient http = new HttpClient())
     sampleImageData = await http.GetByteArrayAsync(sampleImageUrl);
 }
 
-using (PaddleOcrDetector detector = new PaddleOcrDetector(LocalDetectionModel.ChineseV3, PaddleDevice.Mkldnn()))
+using (PaddleOcrDetector detector = new PaddleOcrDetector(LocalDetectionModel.ChineseV5, PaddleDevice.Mkldnn()))
 using (Mat src = Cv2.ImDecode(sampleImageData, ImreadModes.Color))
 {
     RotatedRect[] rects = detector.Run(src);
@@ -160,7 +167,7 @@ using Mat src = Cv2.ImRead(Path.Combine(Environment.GetFolderPath(Environment.Sp
 TableDetectionResult tableResult = tableRec.Run(src);
 
 // Normal OCR
-using PaddleOcrAll all = new(LocalFullModels.ChineseV3);
+using PaddleOcrAll all = new(LocalFullModels.ChineseV5);
 all.Detector.UnclipRatio = 1.2f;
 PaddleOcrResult ocrResult = all.Run(src);
 
@@ -225,7 +232,7 @@ In your service builder code, register a QueuedPaddleOcrAll Singleton:
 builder.Services.AddSingleton(s =>
 {
     Action<PaddleConfig> device = builder.Configuration["PaddleDevice"] == "GPU" ? PaddleDevice.Gpu() : PaddleDevice.Mkldnn();
-    return new QueuedPaddleOcrAll(() => new PaddleOcrAll(LocalFullModels.ChineseV3, device)
+    return new QueuedPaddleOcrAll(() => new PaddleOcrAll(LocalFullModels.ChineseV5, device)
     {
         Enable180Classification = true,
         AllowRotateDetection = true,

@@ -1,10 +1,6 @@
-﻿using SharpCompress.Archives;
-using SharpCompress.Archives.GZip;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.IO;
-using System.Linq;
-using System.Net.Http;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,48 +9,10 @@ namespace Sdcb.PaddleOCR.Models.Online.Details;
 
 internal static class Utils
 {
-    public static Task DownloadFile(Uri uri, string localFile, CancellationToken cancellationToken) => DownloadFiles(new Uri[] { uri }, localFile, cancellationToken);
-
-    public static async Task DownloadFiles(Uri[] uris, string localFile, CancellationToken cancellationToken)
-    {
-        using HttpClient http = new();
-
-        foreach (Uri uri in uris)
-        {
-            try
-            {
-                HttpResponseMessage resp = await http.GetAsync(uri, cancellationToken);
-                if (!resp.IsSuccessStatusCode)
-                {
-                    Console.WriteLine($"Failed to download: {uri}, status code: {(int)resp.StatusCode}({resp.StatusCode})");
-                    continue;
-                }
-
-                using (FileStream file = File.OpenWrite(localFile))
-                {
-                    await resp.Content.CopyToAsync(file/*, cancellationToken*/);
-                    return;
-                }
-            }
-            catch (HttpRequestException ex)
-            {
-                Console.WriteLine($"Failed to download: {uri}, {ex}");
-                continue;
-            }
-            catch (TaskCanceledException)
-            {
-                Console.WriteLine($"Failed to download: {uri}, timeout.");
-                continue;
-            }
-        }
-
-        throw new Exception($"Failed to download {localFile} from all uris: {string.Join(", ", uris.Select(x => x.ToString()))}");
-    }
-
     private static readonly ConcurrentDictionary<string, SemaphoreSlim> _modelLocks = new();
 
     public static async Task DownloadAndExtractAsync(
-        string name, Uri uri, string rootDir, CancellationToken cancellationToken)
+        string name, IModelDownloadSource[] sources, string rootDir, CancellationToken cancellationToken)
     {
         string paramsFile = Path.Combine(rootDir, "inference.pdiparams");
         if (File.Exists(paramsFile))
@@ -70,35 +28,27 @@ internal static class Utils
                 return;
 
             Directory.CreateDirectory(rootDir);
-            string localTarFile = Path.Combine(rootDir, uri.Segments.Last());
 
-            if (!File.Exists(localTarFile) || new FileInfo(localTarFile).Length == 0)
+            Exception? lastError = null;
+            foreach (IModelDownloadSource source in sources)
             {
-                Console.WriteLine($"Downloading {name} model from {uri}");
-                await DownloadFile(uri, localTarFile, cancellationToken);
+                try
+                {
+                    CleanupPartialModelFiles(rootDir);
+
+                    await source.PrepareModelAsync(name, rootDir, cancellationToken);
+                    CheckLocalOCRModel(rootDir);
+                    return;
+                }
+                catch (Exception ex) when (!(ex is OperationCanceledException))
+                {
+                    lastError = ex;
+                    Console.WriteLine($"Failed to prepare model from {source.Description}: {ex.Message}");
+                    CleanupPartialModelFiles(rootDir);
+                }
             }
 
-            Console.WriteLine($"Extracting {localTarFile} to {rootDir}");
-            using (IArchive archive = ArchiveFactory.Open(localTarFile))
-            {
-                if (archive is GZipArchive)
-                {
-                    using Stream stream = archive.Entries.Single().OpenEntryStream();
-                    using MemoryStream ms = new();
-                    stream.CopyTo(ms);
-                    ms.Position = 0;
-                    IArchive inner = ArchiveFactory.Open(ms);
-                    inner.WriteToDirectory(rootDir);
-                }
-                else
-                {
-                    archive.WriteToDirectory(rootDir);
-                }
-
-                CheckLocalOCRModel(rootDir);
-            }
-
-            File.Delete(localTarFile);
+            throw new Exception($"Failed to prepare model {name} from all sources.", lastError);
         }
         finally
         {
@@ -106,6 +56,34 @@ internal static class Utils
 
             if (gate.CurrentCount == 1)
                 _modelLocks.TryRemove(key, out _);
+        }
+    }
+
+    private static void CleanupPartialModelFiles(string rootDir)
+    {
+        string[] filesToDelete = new[]
+        {
+            "inference.json",
+            "inference.pdmodel",
+            "model.json",
+            "model.pdmodel",
+            "inference.pdiparams",
+            "model.pdiparams",
+            "inference.yml",
+        };
+
+        foreach (string fileName in filesToDelete)
+        {
+            string path = Path.Combine(rootDir, fileName);
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+
+        foreach (string archivePath in Directory.EnumerateFiles(rootDir, "*.tar"))
+        {
+            File.Delete(archivePath);
         }
     }
 

@@ -19,8 +19,6 @@ internal static class Utils
         Type rootType = version switch
         {
             ModelVersion.V2 => typeof(LocalFullModels),
-            ModelVersion.V3 => typeof(LocalV3.KnownModels),
-            ModelVersion.V4 => typeof(LocalV4.KnownModels),
             ModelVersion.V5 => typeof(LocalV5.KnownModels),
             _ => throw new NotImplementedException()
         };
@@ -32,7 +30,9 @@ internal static class Utils
         // original code
         byte[] programBuffer = SharedUtils.ReadResourceAsBytes(programBufferKey, assembly);
         byte[] paramsBuffer = SharedUtils.ReadResourceAsBytes($"{prefix}.models.{SharedUtils.EmbeddedResourceTransform(key)}.inference.pdiparams", assembly);
-        return PaddleConfig.FromMemoryModel(programBuffer, paramsBuffer);
+        PaddleConfig c = PaddleConfig.FromMemoryModel(programBuffer, paramsBuffer);
+        c.NewExecutorEnabled = version == ModelVersion.V5;
+        return c;
     }
 
     public static IReadOnlyList<string> LoadV5Dicts(string key)

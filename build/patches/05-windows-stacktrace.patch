@@ -1,0 +1,162 @@
+diff --git a/paddle/common/enforce.cc b/paddle/common/enforce.cc
+index 1e54ac7d66..b15f1fb675 100644
+--- a/paddle/common/enforce.cc
++++ b/paddle/common/enforce.cc
+@@ -15,11 +15,16 @@ limitations under the License. */
+ #include "paddle/common/enforce.h"
+ #include <array>
+ #include <atomic>
++#include <mutex>
+ #include <map>
+ #include <string>
+ #include <vector>
+ #include "paddle/common/flags.h"
+ 
++#ifdef _WIN32
++#include <DbgHelp.h>
++#endif
++
+ REGISTER_LOG_SIMPLY_STR(std::string);
+ COMMON_DECLARE_int32(call_stack_level);
+ namespace {
+@@ -52,6 +57,131 @@ std::string SimplifyDemangleStr(std::string str) {
+ 
+ std::atomic_bool paddle_fatal_skip{false};
+ 
++#ifdef _WIN32
++using SymInitializeFn = decltype(&SymInitialize);
++using SymSetOptionsFn = decltype(&SymSetOptions);
++using SymFromAddrFn = decltype(&SymFromAddr);
++using SymGetLineFromAddr64Fn = decltype(&SymGetLineFromAddr64);
++using SymCleanupFn = decltype(&SymCleanup);
++
++struct WinDbgHelpApi {
++  HMODULE module{nullptr};
++  SymInitializeFn sym_initialize{nullptr};
++  SymSetOptionsFn sym_set_options{nullptr};
++  SymFromAddrFn sym_from_addr{nullptr};
++  SymGetLineFromAddr64Fn sym_get_line_from_addr64{nullptr};
++  SymCleanupFn sym_cleanup{nullptr};
++  bool initialized{false};
++};
++
++WinDbgHelpApi& GetWinDbgHelpApi() {
++  static WinDbgHelpApi api;
++  static std::once_flag once;
++  std::call_once(once, [] {
++    auto& local_api = api;
++    local_api.module = ::LoadLibraryA("dbghelp.dll");
++    if (local_api.module == nullptr) {
++      return;
++    }
++
++    local_api.sym_initialize = reinterpret_cast<SymInitializeFn>(
++        ::GetProcAddress(local_api.module, "SymInitialize"));
++    local_api.sym_set_options = reinterpret_cast<SymSetOptionsFn>(
++        ::GetProcAddress(local_api.module, "SymSetOptions"));
++    local_api.sym_from_addr = reinterpret_cast<SymFromAddrFn>(
++        ::GetProcAddress(local_api.module, "SymFromAddr"));
++    local_api.sym_get_line_from_addr64 =
++        reinterpret_cast<SymGetLineFromAddr64Fn>(
++            ::GetProcAddress(local_api.module, "SymGetLineFromAddr64"));
++    local_api.sym_cleanup = reinterpret_cast<SymCleanupFn>(
++        ::GetProcAddress(local_api.module, "SymCleanup"));
++
++    if (local_api.sym_initialize == nullptr ||
++        local_api.sym_set_options == nullptr ||
++        local_api.sym_from_addr == nullptr ||
++        local_api.sym_get_line_from_addr64 == nullptr) {
++      if (local_api.module != nullptr) {
++        ::FreeLibrary(local_api.module);
++      }
++      local_api = WinDbgHelpApi{};
++      return;
++    }
++
++    local_api.sym_set_options(SYMOPT_DEFERRED_LOADS | SYMOPT_LOAD_LINES |
++                              SYMOPT_UNDNAME);
++    local_api.initialized =
++        local_api.sym_initialize(::GetCurrentProcess(), nullptr, TRUE) == TRUE;
++    if (!local_api.initialized) {
++      if (local_api.module != nullptr) {
++        ::FreeLibrary(local_api.module);
++      }
++      local_api = WinDbgHelpApi{};
++    }
++  });
++  return api;
++}
++
++std::string GetCurrentTraceBackStringWin() {
++  auto& dbghelp = GetWinDbgHelpApi();
++  if (!dbghelp.initialized) {
++    return "Not support stack backtrace yet.\n";
++  }
++
++  static std::mutex dbghelp_mutex;
++  std::lock_guard<std::mutex> lock(dbghelp_mutex);
++
++  static constexpr USHORT kTraceStackLimit = 100;
++  static constexpr ULONG kFramesToSkip = 1;
++
++  void* call_stack[kTraceStackLimit] = {};
++  const auto frame_count =
++      ::CaptureStackBackTrace(kFramesToSkip, kTraceStackLimit, call_stack, NULL);
++  if (frame_count == 0) {
++    return "Not support stack backtrace yet.\n";
++  }
++
++  std::ostringstream sout;
++  auto process = ::GetCurrentProcess();
++  int idx = 0;
++  for (USHORT i = frame_count; i > 0; --i) {
++    auto address = reinterpret_cast<DWORD64>(call_stack[i - 1]);
++    constexpr size_t kMaxSymbolNameLen = 1024;
++    alignas(SYMBOL_INFO) char symbol_buffer[sizeof(SYMBOL_INFO) +
++                                            kMaxSymbolNameLen] = {};
++    auto* symbol = reinterpret_cast<SYMBOL_INFO*>(symbol_buffer);
++    symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
++    symbol->MaxNameLen = kMaxSymbolNameLen;
++
++    DWORD64 displacement = 0;
++    if (dbghelp.sym_from_addr(process, address, &displacement, symbol) != TRUE) {
++      sout << paddle::string::Sprintf("%-3d 0x%p\n",
++                                      idx++,
++                                      reinterpret_cast<void*>(address));
++      continue;
++    }
++
++    std::string frame_name = SimplifyDemangleStr(common::demangle(symbol->Name));
++    IMAGEHLP_LINE64 line = {};
++    line.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
++    DWORD line_displacement = 0;
++    if (dbghelp.sym_get_line_from_addr64(
++            process, address, &line_displacement, &line) == TRUE &&
++        line.FileName != nullptr) {
++      sout << paddle::string::Sprintf("%-3d %s at %s:%lu\n",
++                                      idx++,
++                                      frame_name.c_str(),
++                                      line.FileName,
++                                      line.LineNumber);
++    } else {
++      sout << paddle::string::Sprintf("%-3d %s\n",
++                                      idx++,
++                                      frame_name.c_str());
++    }
++  }
++  return sout.str();
++}
++#endif
++
+ }  // namespace
+ 
+ namespace common::enforce {
+@@ -116,6 +246,8 @@ std::string GetCurrentTraceBackString(bool for_signal) {
+     }
+   }
+   free(symbols);  // NOLINT
++#elif defined(_WIN32)
++  sout << GetCurrentTraceBackStringWin();
+ #else
+   sout << "Not support stack backtrace yet.\n";
+ #endif

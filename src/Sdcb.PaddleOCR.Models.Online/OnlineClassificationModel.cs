@@ -10,7 +10,7 @@ namespace Sdcb.PaddleOCR.Models.Online;
 /// <summary>
 /// Represents an online classification model that can be downloaded and used for text angle classification.
 /// </summary>
-public record OnlineClassificationModel(string Name, Uri Uri, ModelVersion Version)
+public record OnlineClassificationModel(string Name, IModelDownloadSource[] Sources, ModelVersion Version)
 {
     /// <summary>
     /// Gets the root directory of the model.
@@ -24,19 +24,19 @@ public record OnlineClassificationModel(string Name, Uri Uri, ModelVersion Versi
     /// <returns>A <see cref="FileClassificationModel"/> that represent the downloaded model.</returns>
     public async Task<FileClassificationModel> DownloadAsync(CancellationToken cancellationToken = default)
     {
-        await Utils.DownloadAndExtractAsync(Name, Uri, RootDirectory, cancellationToken);
+        await Utils.DownloadAndExtractAsync(Name, Sources, RootDirectory, cancellationToken);
         return new FileClassificationModel(RootDirectory, Version);
     }
 
     /// <summary>
     /// Gets an online classification model for slim quantized text angle classification (Size: 2.1M).
     /// </summary>
-    public static OnlineClassificationModel ChineseMobileSlimV2 => new("ch_ppocr_mobile_slim_v2.0_cls", new Uri("https://paddleocr.bj.bcebos.com/dygraph_v2.0/ch/ch_ppocr_mobile_v2.0_cls_slim_infer.tar"), ModelVersion.V2);
+    public static OnlineClassificationModel ChineseMobileSlimV2 => new("ch_ppocr_mobile_slim_v2.0_cls", ModelDownloadSources.Create("https://paddleocr.bj.bcebos.com/dygraph_v2.0/ch/ch_ppocr_mobile_v2.0_cls_slim_infer.tar", "PaddlePaddle/PP-LCNet_x0_25_textline_ori", "inference.json", "inference.pdiparams"), ModelVersion.V2);
 
     /// <summary>
     /// Gets an online classification model for original text angle classification (Size: 1.38M).
     /// </summary>
-    public static OnlineClassificationModel ChineseMobileV2 => new("ch_ppocr_mobile_v2.0_cls", new Uri("https://paddleocr.bj.bcebos.com/dygraph_v2.0/ch/ch_ppocr_mobile_v2.0_cls_infer.tar"), ModelVersion.V2);
+    public static OnlineClassificationModel ChineseMobileV2 => new("ch_ppocr_mobile_v2.0_cls", ModelDownloadSources.Create("https://paddleocr.bj.bcebos.com/dygraph_v2.0/ch/ch_ppocr_mobile_v2.0_cls_infer.tar", "PaddlePaddle/PP-LCNet_x1_0_textline_ori", "inference.json", "inference.pdiparams"), ModelVersion.V2);
 
     /// <summary>
     /// Gets an array of all available online classification models.

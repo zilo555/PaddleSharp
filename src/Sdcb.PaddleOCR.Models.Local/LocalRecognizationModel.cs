@@ -60,147 +60,76 @@ public class LocalRecognizationModel : RecognizationModel
     public static LocalRecognizationModel ChineseV5 => new("mobile-zh-rec", "", ModelVersion.V5);
 
     /// <summary>
-    /// v4 model for Chinese recognition
-    /// (Size: 10.46MB)
+    /// Gets the English V5 local recognition model.
     /// </summary>
-    public static LocalRecognizationModel ChineseV4 => new("ch_PP-OCRv4_rec", "ppocr_keys_v1.txt", ModelVersion.V4);
+    public static LocalRecognizationModel EnglishV5 => new("en_PP-OCRv5_mobile_rec", "", ModelVersion.V5);
 
     /// <summary>
-    /// v4 model for English recognition
-    /// (Size: 9.76MB)
+    /// Gets the Korean V5 local recognition model.
     /// </summary>
-    public static LocalRecognizationModel EnglishV4 => new("en_PP-OCRv4_rec", "en_dict.txt", ModelVersion.V4);
+    public static LocalRecognizationModel KoreanV5 => new("korean_PP-OCRv5_mobile_rec", "", ModelVersion.V5);
 
     /// <summary>
-    /// v4 model for Korean recognition
-    /// (Size: 23.25MB)
+    /// Gets the Latin V5 local recognition model.
     /// </summary>
-    public static LocalRecognizationModel KoreanV4 => new("korean_PP-OCRv4_rec", "korean_dict.txt", ModelVersion.V4);
+    public static LocalRecognizationModel LatinV5 => new("latin_PP-OCRv5_mobile_rec", "", ModelVersion.V5);
 
     /// <summary>
-    /// v4 model for Japanese recognition
-    /// (Size: 9.51MB)
+    /// Gets the East Slavic V5 local recognition model.
     /// </summary>
-    public static LocalRecognizationModel JapanV4 => new("japan_PP-OCRv4_rec", "japan_dict.txt", ModelVersion.V4);
+    public static LocalRecognizationModel EastSlavicV5 => new("eslav_PP-OCRv5_mobile_rec", "", ModelVersion.V5);
 
     /// <summary>
-    /// v4 model for Telugu recognition
-    /// (Size: 21.62MB)
+    /// Gets the Thai V5 local recognition model.
     /// </summary>
-    public static LocalRecognizationModel TeluguV4 => new("te_PP-OCRv4_rec", "te_dict.txt", ModelVersion.V4);
+    public static LocalRecognizationModel ThaiV5 => new("th_PP-OCRv5_mobile_rec", "", ModelVersion.V5);
 
     /// <summary>
-    /// v4 model for Kannada recognition
-    /// (Size: 7.56MB)
+    /// Gets the Greek V5 local recognition model.
     /// </summary>
-    public static LocalRecognizationModel KannadaV4 => new("ka_PP-OCRv4_rec", "ka_dict.txt", ModelVersion.V4);
+    public static LocalRecognizationModel GreekV5 => new("el_PP-OCRv5_mobile_rec", "", ModelVersion.V5);
 
     /// <summary>
-    /// v4 model for Tamil recognition
-    /// (Size: 21.60MB)
+    /// Gets the Cyrillic V5 local recognition model.
     /// </summary>
-    public static LocalRecognizationModel TamilV4 => new("ta_PP-OCRv4_rec", "ta_dict.txt", ModelVersion.V4);
+    public static LocalRecognizationModel CyrillicV5 => new("cyrillic_PP-OCRv5_mobile_rec", "", ModelVersion.V5);
 
     /// <summary>
-    /// v4 model for Arabic recognition
-    /// (Size: 7.55MB)
+    /// Gets the Arabic V5 local recognition model.
     /// </summary>
-    public static LocalRecognizationModel ArabicV4 => new("arabic_PP-OCRv4_rec", "arabic_dict.txt", ModelVersion.V4);
+    public static LocalRecognizationModel ArabicV5 => new("arabic_PP-OCRv5_mobile_rec", "", ModelVersion.V5);
 
     /// <summary>
-    /// v4 model for Devanagari recognition
-    /// (Size: 7.56MB)
+    /// Gets the Devanagari V5 local recognition model.
     /// </summary>
-    public static LocalRecognizationModel DevanagariV4 => new("devanagari_PP-OCRv4_rec", "devanagari_dict.txt", ModelVersion.V4);
+    public static LocalRecognizationModel DevanagariV5 => new("devanagari_PP-OCRv5_mobile_rec", "", ModelVersion.V5);
 
     /// <summary>
-    /// Original lightweight model, supporting Chinese, English, multilingual text recognition
-    /// (Size: 12.4M)
+    /// Gets the Telugu V5 local recognition model.
     /// </summary>
-    public static LocalRecognizationModel ChineseV3 => new("ch_PP-OCRv3_rec", "ppocr_keys_v1.txt", ModelVersion.V3);
+    public static LocalRecognizationModel TeluguV5 => new("te_PP-OCRv5_mobile_rec", "", ModelVersion.V5);
 
     /// <summary>
-    /// Original lightweight model, supporting English, multilingual text recognition
-    /// (Size: 9.6M)
+    /// Gets the Tamil V5 local recognition model.
     /// </summary>
-    public static LocalRecognizationModel EnglishV3 => new("en_PP-OCRv3_rec", "en_dict.txt", ModelVersion.V3);
-
-    /// <summary>
-    /// Lightweight model for Korean recognition
-    /// (Size: 11M)
-    /// </summary>
-    public static LocalRecognizationModel KoreanV3 => new("korean_PP-OCRv3_rec", "korean_dict.txt", ModelVersion.V3);
-
-    /// <summary>
-    /// Lightweight model for Japanese recognition
-    /// (Size: 11M)
-    /// </summary>
-    public static LocalRecognizationModel JapanV3 => new("japan_PP-OCRv3_rec", "japan_dict.txt", ModelVersion.V3);
-
-    /// <summary>
-    /// Lightweight model for TraditionalChinese recognition
-    /// (Size: 12M)
-    /// </summary>
-    public static LocalRecognizationModel TraditionalChineseV3 => new("chinese_cht_PP-OCRv3_rec", "chinese_cht_dict.txt", ModelVersion.V3);
-
-    /// <summary>
-    /// Lightweight model for Telugu recognition
-    /// (Size: 9.6M)
-    /// </summary>
-    public static LocalRecognizationModel TeluguV3 => new("te_PP-OCRv3_rec", "te_dict.txt", ModelVersion.V3);
-
-    /// <summary>
-    /// Lightweight model for Kannada recognition
-    /// (Size: 9.9M)
-    /// </summary>
-    public static LocalRecognizationModel KannadaV3 => new("ka_PP-OCRv3_rec", "ka_dict.txt", ModelVersion.V3);
-
-    /// <summary>
-    /// Lightweight model for Tamil recognition
-    /// (Size: 9.6M)
-    /// </summary>
-    public static LocalRecognizationModel TamilV3 => new("ta_PP-OCRv3_rec", "ta_dict.txt", ModelVersion.V3);
-
-    /// <summary>
-    /// Lightweight model for latin recognition
-    /// (Size: 9.7M)
-    /// </summary>
-    public static LocalRecognizationModel LatinV3 => new("latin_PP-OCRv3_rec", "latin_dict.txt", ModelVersion.V3);
-
-    /// <summary>
-    /// Lightweight model for arabic recognition
-    /// (Size: 9.6M)
-    /// </summary>
-    public static LocalRecognizationModel ArabicV3 => new("arabic_PP-OCRv3_rec", "arabic_dict.txt", ModelVersion.V3);
-
-    /// <summary>
-    /// Lightweight model for cyrillic recognition
-    /// (Size: 9.6M)
-    /// </summary>
-    public static LocalRecognizationModel CyrillicV3 => new("cyrillic_PP-OCRv3_rec", "cyrillic_dict.txt", ModelVersion.V3);
-
-    /// <summary>
-    /// Lightweight model for devanagari recognition
-    /// (Size: 9.9M)
-    /// </summary>
-    public static LocalRecognizationModel DevanagariV3 => new("devanagari_PP-OCRv3_rec", "devanagari_dict.txt", ModelVersion.V3);
+    public static LocalRecognizationModel TamilV5 => new("ta_PP-OCRv5_mobile_rec", "", ModelVersion.V5);
 
     /// <summary>
     /// An array containing all instances of the LocalRecognizationModel
     /// </summary>
     public static LocalRecognizationModel[] All => new[]
     {
-        ChineseV3,
-        EnglishV3,
-        KoreanV3,
-        JapanV3,
-        TraditionalChineseV3,
-        TeluguV3,
-        KannadaV3,
-        TamilV3,
-        LatinV3,
-        ArabicV3,
-        CyrillicV3,
-        DevanagariV3,
+        ChineseV5,
+        EnglishV5,
+        KoreanV5,
+        LatinV5,
+        EastSlavicV5,
+        ThaiV5,
+        GreekV5,
+        CyrillicV5,
+        ArabicV5,
+        DevanagariV5,
+        TeluguV5,
+        TamilV5,
     };
 }

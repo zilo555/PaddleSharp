@@ -13,7 +13,7 @@ namespace Sdcb.PaddleOCR.Models.Online;
 /// <remarks>
 /// Used for downloading and extracting a model from a url, and creating a new StreamDictFileRecognizationModel with the downloaded contents.
 /// </remarks>
-public record LocalDictOnlineRecognizationModel(string Name, string DictName, Uri Uri, ModelVersion Version)
+public record LocalDictOnlineRecognizationModel(string Name, string DictName, IModelDownloadSource[] Sources, ModelVersion Version)
 {
     /// <summary>
     /// Gets or sets the root directory for the downloaded models.
@@ -27,7 +27,7 @@ public record LocalDictOnlineRecognizationModel(string Name, string DictName, Ur
     /// <returns>The downloaded and extracted RecognizationModel.</returns>
     public async Task<RecognizationModel> DownloadAsync(CancellationToken cancellationToken = default)
     {
-        await Utils.DownloadAndExtractAsync(Name, Uri, RootDirectory, cancellationToken);
+        await Utils.DownloadAndExtractAsync(Name, Sources, RootDirectory, cancellationToken);
 
         if (Version == ModelVersion.V5)
         {
@@ -42,192 +42,247 @@ public record LocalDictOnlineRecognizationModel(string Name, string DictName, Ur
     /// <summary>
     /// v5 model for Chinese recognition
     /// </summary>
-    public static LocalDictOnlineRecognizationModel ChineseV5 => new("PP-OCRv5_mobile_rec_infer", "", new Uri("https://paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0/PP-OCRv5_mobile_rec_infer.tar"), ModelVersion.V5);
+    public static LocalDictOnlineRecognizationModel ChineseV5 => new("PP-OCRv5_mobile_rec_infer", "", ModelDownloadSources.Create("https://paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0/PP-OCRv5_mobile_rec_infer.tar", "PaddlePaddle/PP-OCRv5_mobile_rec", "inference.json", "inference.pdiparams", "inference.yml"), ModelVersion.V5);
 
     /// <summary>
     /// v5 server model for Chinese recognition
     /// </summary>
-    public static LocalDictOnlineRecognizationModel ChineseServerV5 => new("PP-OCRv5_server_rec_infer.tar", "", new Uri("https://paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0/PP-OCRv5_server_rec_infer.tar"), ModelVersion.V5);
+    public static LocalDictOnlineRecognizationModel ChineseServerV5 => new("PP-OCRv5_server_rec_infer.tar", "", ModelDownloadSources.Create("https://paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0/PP-OCRv5_server_rec_infer.tar", "PaddlePaddle/PP-OCRv5_server_rec", "inference.json", "inference.pdiparams", "inference.yml"), ModelVersion.V5);
+
+    /// <summary>
+    /// v5 model for English recognition
+    /// </summary>
+    public static LocalDictOnlineRecognizationModel EnglishV5 => new("en_PP-OCRv5_mobile_rec", "", ModelDownloadSources.Create("https://paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0/en_PP-OCRv5_mobile_rec_infer.tar", "PaddlePaddle/en_PP-OCRv5_mobile_rec", "inference.json", "inference.pdiparams", "inference.yml"), ModelVersion.V5);
+
+    /// <summary>
+    /// v5 model for Korean recognition
+    /// </summary>
+    public static LocalDictOnlineRecognizationModel KoreanV5 => new("korean_PP-OCRv5_mobile_rec", "", ModelDownloadSources.Create("https://paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0/korean_PP-OCRv5_mobile_rec_infer.tar", "PaddlePaddle/korean_PP-OCRv5_mobile_rec", "inference.json", "inference.pdiparams", "inference.yml"), ModelVersion.V5);
+
+    /// <summary>
+    /// v5 model for Latin-script language recognition
+    /// </summary>
+    public static LocalDictOnlineRecognizationModel LatinV5 => new("latin_PP-OCRv5_mobile_rec", "", ModelDownloadSources.Create("https://paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0/latin_PP-OCRv5_mobile_rec_infer.tar", "PaddlePaddle/latin_PP-OCRv5_mobile_rec", "inference.json", "inference.pdiparams", "inference.yml"), ModelVersion.V5);
+
+    /// <summary>
+    /// v5 model for East Slavic language recognition
+    /// </summary>
+    public static LocalDictOnlineRecognizationModel EastSlavicV5 => new("eslav_PP-OCRv5_mobile_rec", "", ModelDownloadSources.Create("https://paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0/eslav_PP-OCRv5_mobile_rec_infer.tar", "PaddlePaddle/eslav_PP-OCRv5_mobile_rec", "inference.json", "inference.pdiparams", "inference.yml"), ModelVersion.V5);
+
+    /// <summary>
+    /// v5 model for Thai recognition
+    /// </summary>
+    public static LocalDictOnlineRecognizationModel ThaiV5 => new("th_PP-OCRv5_mobile_rec", "", ModelDownloadSources.Create("https://paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0/th_PP-OCRv5_mobile_rec_infer.tar", "PaddlePaddle/th_PP-OCRv5_mobile_rec", "inference.json", "inference.pdiparams", "inference.yml"), ModelVersion.V5);
+
+    /// <summary>
+    /// v5 model for Greek recognition
+    /// </summary>
+    public static LocalDictOnlineRecognizationModel GreekV5 => new("el_PP-OCRv5_mobile_rec", "", ModelDownloadSources.Create("https://paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0/el_PP-OCRv5_mobile_rec_infer.tar", "PaddlePaddle/el_PP-OCRv5_mobile_rec", "inference.json", "inference.pdiparams", "inference.yml"), ModelVersion.V5);
+
+    /// <summary>
+    /// v5 model for Cyrillic-script language recognition
+    /// </summary>
+    public static LocalDictOnlineRecognizationModel CyrillicV5 => new("cyrillic_PP-OCRv5_mobile_rec", "", ModelDownloadSources.Create("https://paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0/cyrillic_PP-OCRv5_mobile_rec_infer.tar", "PaddlePaddle/cyrillic_PP-OCRv5_mobile_rec", "inference.json", "inference.pdiparams", "inference.yml"), ModelVersion.V5);
+
+    /// <summary>
+    /// v5 model for Arabic-script language recognition
+    /// </summary>
+    public static LocalDictOnlineRecognizationModel ArabicV5 => new("arabic_PP-OCRv5_mobile_rec", "", ModelDownloadSources.Create("https://paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0/arabic_PP-OCRv5_mobile_rec_infer.tar", "PaddlePaddle/arabic_PP-OCRv5_mobile_rec", "inference.json", "inference.pdiparams", "inference.yml"), ModelVersion.V5);
+
+    /// <summary>
+    /// v5 model for Devanagari-script language recognition
+    /// </summary>
+    public static LocalDictOnlineRecognizationModel DevanagariV5 => new("devanagari_PP-OCRv5_mobile_rec", "", ModelDownloadSources.Create("https://paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0/devanagari_PP-OCRv5_mobile_rec_infer.tar", "PaddlePaddle/devanagari_PP-OCRv5_mobile_rec", "inference.json", "inference.pdiparams", "inference.yml"), ModelVersion.V5);
+
+    /// <summary>
+    /// v5 model for Telugu recognition
+    /// </summary>
+    public static LocalDictOnlineRecognizationModel TeluguV5 => new("te_PP-OCRv5_mobile_rec", "", ModelDownloadSources.Create("https://paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0/te_PP-OCRv5_mobile_rec_infer.tar", "PaddlePaddle/te_PP-OCRv5_mobile_rec", "inference.json", "inference.pdiparams", "inference.yml"), ModelVersion.V5);
+
+    /// <summary>
+    /// v5 model for Tamil recognition
+    /// </summary>
+    public static LocalDictOnlineRecognizationModel TamilV5 => new("ta_PP-OCRv5_mobile_rec", "", ModelDownloadSources.Create("https://paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0/ta_PP-OCRv5_mobile_rec_infer.tar", "PaddlePaddle/ta_PP-OCRv5_mobile_rec", "inference.json", "inference.pdiparams", "inference.yml"), ModelVersion.V5);
 
     /// <summary>
     /// v4 model for Chinese recognition
     /// (Size: 10.46MB)
     /// </summary>
-    public static LocalDictOnlineRecognizationModel ChineseV4 => new("ch_PP-OCRv4_rec", "ppocr_keys_v1.txt", new Uri("https://paddleocr.bj.bcebos.com/PP-OCRv4/chinese/ch_PP-OCRv4_rec_infer.tar"), ModelVersion.V4);
+    public static LocalDictOnlineRecognizationModel ChineseV4 => new("ch_PP-OCRv4_rec", "ppocr_keys_v1.txt", ModelDownloadSources.Create("https://paddleocr.bj.bcebos.com/PP-OCRv4/chinese/ch_PP-OCRv4_rec_infer.tar", "PaddlePaddle/PP-OCRv4_mobile_rec", "inference.json", "inference.pdiparams"), ModelVersion.V4);
 
     /// <summary>
     /// v4 model for English recognition
     /// (Size: 9.76MB)
     /// </summary>
-    public static LocalDictOnlineRecognizationModel EnglishV4 => new("en_PP-OCRv4_rec", "en_dict.txt", new Uri("https://paddleocr.bj.bcebos.com/PP-OCRv4/english/en_PP-OCRv4_rec_infer.tar"), ModelVersion.V4);
+    public static LocalDictOnlineRecognizationModel EnglishV4 => new("en_PP-OCRv4_rec", "en_dict.txt", ModelDownloadSources.Create("https://paddleocr.bj.bcebos.com/PP-OCRv4/english/en_PP-OCRv4_rec_infer.tar", "PaddlePaddle/en_PP-OCRv4_mobile_rec", "inference.json", "inference.pdiparams"), ModelVersion.V4);
 
     /// <summary>
     /// v4 model for Korean recognition
     /// (Size: 23.25MB)
     /// </summary>
-    public static LocalDictOnlineRecognizationModel KoreanV4 => new("korean_PP-OCRv4_rec", "korean_dict.txt", new Uri("https://paddleocr.bj.bcebos.com/PP-OCRv4/multilingual/korean_PP-OCRv4_rec_infer.tar"), ModelVersion.V4);
+    public static LocalDictOnlineRecognizationModel KoreanV4 => new("korean_PP-OCRv4_rec", "korean_dict.txt", ModelDownloadSources.Create("https://paddleocr.bj.bcebos.com/PP-OCRv4/multilingual/korean_PP-OCRv4_rec_infer.tar"), ModelVersion.V4);
 
     /// <summary>
     /// v4 model for Japanese recognition
     /// (Size: 9.51MB)
     /// </summary>
-    public static LocalDictOnlineRecognizationModel JapanV4 => new("japan_PP-OCRv4_rec", "japan_dict.txt", new Uri("https://paddleocr.bj.bcebos.com/PP-OCRv4/multilingual/japan_PP-OCRv4_rec_infer.tar"), ModelVersion.V4);
+    public static LocalDictOnlineRecognizationModel JapanV4 => new("japan_PP-OCRv4_rec", "japan_dict.txt", ModelDownloadSources.Create("https://paddleocr.bj.bcebos.com/PP-OCRv4/multilingual/japan_PP-OCRv4_rec_infer.tar"), ModelVersion.V4);
 
     /// <summary>
     /// v4 model for Telugu recognition
     /// (Size: 21.62MB)
     /// </summary>
-    public static LocalDictOnlineRecognizationModel TeluguV4 => new("te_PP-OCRv4_rec", "te_dict.txt", new Uri("https://paddleocr.bj.bcebos.com/PP-OCRv4/multilingual/te_PP-OCRv4_rec_infer.tar"), ModelVersion.V4);
+    public static LocalDictOnlineRecognizationModel TeluguV4 => new("te_PP-OCRv4_rec", "te_dict.txt", ModelDownloadSources.Create("https://paddleocr.bj.bcebos.com/PP-OCRv4/multilingual/te_PP-OCRv4_rec_infer.tar"), ModelVersion.V4);
 
     /// <summary>
     /// v4 model for Kannada recognition
     /// (Size: 7.56MB)
     /// </summary>
-    public static LocalDictOnlineRecognizationModel KannadaV4 => new("ka_PP-OCRv4_rec", "ka_dict.txt", new Uri("https://paddleocr.bj.bcebos.com/PP-OCRv4/multilingual/ka_PP-OCRv4_rec_infer.tar"), ModelVersion.V4);
+    public static LocalDictOnlineRecognizationModel KannadaV4 => new("ka_PP-OCRv4_rec", "ka_dict.txt", ModelDownloadSources.Create("https://paddleocr.bj.bcebos.com/PP-OCRv4/multilingual/ka_PP-OCRv4_rec_infer.tar"), ModelVersion.V4);
 
     /// <summary>
     /// v4 model for Tamil recognition
     /// (Size: 21.60MB)
     /// </summary>
-    public static LocalDictOnlineRecognizationModel TamilV4 => new("ta_PP-OCRv4_rec", "ta_dict.txt", new Uri("https://paddleocr.bj.bcebos.com/PP-OCRv4/multilingual/ta_PP-OCRv4_rec_infer.tar"), ModelVersion.V4);
+    public static LocalDictOnlineRecognizationModel TamilV4 => new("ta_PP-OCRv4_rec", "ta_dict.txt", ModelDownloadSources.Create("https://paddleocr.bj.bcebos.com/PP-OCRv4/multilingual/ta_PP-OCRv4_rec_infer.tar"), ModelVersion.V4);
 
     /// <summary>
     /// v4 model for Arabic recognition
     /// (Size: 7.55MB)
     /// </summary>
-    public static LocalDictOnlineRecognizationModel ArabicV4 => new("arabic_PP-OCRv4_rec", "arabic_dict.txt", new Uri("https://paddleocr.bj.bcebos.com/PP-OCRv4/multilingual/arabic_PP-OCRv4_rec_infer.tar"), ModelVersion.V4);
+    public static LocalDictOnlineRecognizationModel ArabicV4 => new("arabic_PP-OCRv4_rec", "arabic_dict.txt", ModelDownloadSources.Create("https://paddleocr.bj.bcebos.com/PP-OCRv4/multilingual/arabic_PP-OCRv4_rec_infer.tar"), ModelVersion.V4);
 
     /// <summary>
     /// v4 model for Devanagari recognition
     /// (Size: 7.56MB)
     /// </summary>
-    public static LocalDictOnlineRecognizationModel DevanagariV4 => new("devanagari_PP-OCRv4_rec", "devanagari_dict.txt", new Uri("https://paddleocr.bj.bcebos.com/PP-OCRv4/multilingual/devanagari_PP-OCRv4_rec_infer.tar"), ModelVersion.V4);
+    public static LocalDictOnlineRecognizationModel DevanagariV4 => new("devanagari_PP-OCRv4_rec", "devanagari_dict.txt", ModelDownloadSources.Create("https://paddleocr.bj.bcebos.com/PP-OCRv4/multilingual/devanagari_PP-OCRv4_rec_infer.tar"), ModelVersion.V4);
 
     /// <summary>
     /// Slim qunatization with distillation lightweight model, supporting Chinese, English text recognition
     /// (Size: 4.9MB)
     /// </summary>
-    public static LocalDictOnlineRecognizationModel ChineseV3Slim => new("ch_PP-OCRv3_rec_slim", "ppocr_keys_v1.txt", new Uri("https://paddleocr.bj.bcebos.com/PP-OCRv3/chinese/ch_PP-OCRv3_rec_slim_infer.tar"), ModelVersion.V3);
+    public static LocalDictOnlineRecognizationModel ChineseV3Slim => new("ch_PP-OCRv3_rec_slim", "ppocr_keys_v1.txt", ModelDownloadSources.Create("https://paddleocr.bj.bcebos.com/PP-OCRv3/chinese/ch_PP-OCRv3_rec_slim_infer.tar"), ModelVersion.V3);
 
     /// <summary>
     /// Original lightweight model, supporting Chinese, English, multilingual text recognition
     /// (Size: 12.4MB)
     /// </summary>
-    public static LocalDictOnlineRecognizationModel ChineseV3 => new("ch_PP-OCRv3_rec", "ppocr_keys_v1.txt", new Uri("https://paddleocr.bj.bcebos.com/PP-OCRv3/chinese/ch_PP-OCRv3_rec_infer.tar"), ModelVersion.V3);
+    public static LocalDictOnlineRecognizationModel ChineseV3 => new("ch_PP-OCRv3_rec", "ppocr_keys_v1.txt", ModelDownloadSources.Create("https://paddleocr.bj.bcebos.com/PP-OCRv3/chinese/ch_PP-OCRv3_rec_infer.tar", "PaddlePaddle/PP-OCRv3_mobile_rec", "inference.json", "inference.pdiparams"), ModelVersion.V3);
 
     /// <summary>
     /// Slim qunatization with distillation lightweight model, supporting Chinese, English text recognition
     /// (Size: 9MB)
     /// </summary>
-    public static LocalDictOnlineRecognizationModel ChineseV2Slim => new("ch_PP-OCRv2_rec_slim", "ppocr_keys_v1.txt", new Uri("https://paddleocr.bj.bcebos.com/PP-OCRv2/chinese/ch_PP-OCRv2_rec_slim_quant_infer.tar"), ModelVersion.V2);
+    public static LocalDictOnlineRecognizationModel ChineseV2Slim => new("ch_PP-OCRv2_rec_slim", "ppocr_keys_v1.txt", ModelDownloadSources.Create("https://paddleocr.bj.bcebos.com/PP-OCRv2/chinese/ch_PP-OCRv2_rec_slim_quant_infer.tar"), ModelVersion.V2);
 
     /// <summary>
     /// Original lightweight model, supporting Chinese, English, multilingual text recognition
     /// (Size: 8.5MB)
     /// </summary>
-    public static LocalDictOnlineRecognizationModel ChineseV2 => new("ch_PP-OCRv2_rec", "ppocr_keys_v1.txt", new Uri("https://paddleocr.bj.bcebos.com/PP-OCRv2/chinese/ch_PP-OCRv2_rec_infer.tar"), ModelVersion.V2);
+    public static LocalDictOnlineRecognizationModel ChineseV2 => new("ch_PP-OCRv2_rec", "ppocr_keys_v1.txt", ModelDownloadSources.Create("https://paddleocr.bj.bcebos.com/PP-OCRv2/chinese/ch_PP-OCRv2_rec_infer.tar"), ModelVersion.V2);
 
     /// <summary>
     /// Slim pruned and quantized lightweight model, supporting Chinese, English and number recognition
     /// (Size: 6MB)
     /// </summary>
-    public static LocalDictOnlineRecognizationModel ChineseMobileSlimV2 => new("ch_ppocr_mobile_slim_v2.0_rec", "ppocr_keys_v1.txt", new Uri("https://paddleocr.bj.bcebos.com/dygraph_v2.0/ch/ch_ppocr_mobile_v2.0_rec_slim_infer.tar"), ModelVersion.V2);
+    public static LocalDictOnlineRecognizationModel ChineseMobileSlimV2 => new("ch_ppocr_mobile_slim_v2.0_rec", "ppocr_keys_v1.txt", ModelDownloadSources.Create("https://paddleocr.bj.bcebos.com/dygraph_v2.0/ch/ch_ppocr_mobile_v2.0_rec_slim_infer.tar"), ModelVersion.V2);
 
     /// <summary>
     /// Original lightweight model, supporting Chinese, English and number recognition
     /// (Size: 5.2MB)
     /// </summary>
-    public static LocalDictOnlineRecognizationModel ChineseMobileV2 => new("ch_ppocr_mobile_v2.0_rec", "ppocr_keys_v1.txt", new Uri("https://paddleocr.bj.bcebos.com/dygraph_v2.0/ch/ch_ppocr_mobile_v2.0_rec_infer.tar"), ModelVersion.V2);
+    public static LocalDictOnlineRecognizationModel ChineseMobileV2 => new("ch_ppocr_mobile_v2.0_rec", "ppocr_keys_v1.txt", ModelDownloadSources.Create("https://paddleocr.bj.bcebos.com/dygraph_v2.0/ch/ch_ppocr_mobile_v2.0_rec_infer.tar"), ModelVersion.V2);
 
     /// <summary>
     /// General model, supporting Chinese, English and number recognition
     /// (Size: 94.8MB)
     /// </summary>
-    public static LocalDictOnlineRecognizationModel ChineseServerV2 => new("ch_ppocr_server_v2.0_rec", "ppocr_keys_v1.txt", new Uri("https://paddleocr.bj.bcebos.com/dygraph_v2.0/ch/ch_ppocr_server_v2.0_rec_infer.tar"), ModelVersion.V2);
+    public static LocalDictOnlineRecognizationModel ChineseServerV2 => new("ch_ppocr_server_v2.0_rec", "ppocr_keys_v1.txt", ModelDownloadSources.Create("https://paddleocr.bj.bcebos.com/dygraph_v2.0/ch/ch_ppocr_server_v2.0_rec_infer.tar"), ModelVersion.V2);
 
     /// <summary>
     /// Slim qunatization with distillation lightweight model, supporting english, English text recognition
     /// (Size: 3.2MB)
     /// </summary>
-    public static LocalDictOnlineRecognizationModel EnglishV3Slim => new("en_PP-OCRv3_rec_slim", "en_dict.txt", new Uri("https://paddleocr.bj.bcebos.com/PP-OCRv3/english/en_PP-OCRv3_rec_slim_infer.tar"), ModelVersion.V3);
+    public static LocalDictOnlineRecognizationModel EnglishV3Slim => new("en_PP-OCRv3_rec_slim", "en_dict.txt", ModelDownloadSources.Create("https://paddleocr.bj.bcebos.com/PP-OCRv3/english/en_PP-OCRv3_rec_slim_infer.tar"), ModelVersion.V3);
 
     /// <summary>
     /// Original lightweight model, supporting english, English, multilingual text recognition
     /// (Size: 9.6MB)
     /// </summary>
-    public static LocalDictOnlineRecognizationModel EnglishV3 => new("en_PP-OCRv3_rec", "en_dict.txt", new Uri("https://paddleocr.bj.bcebos.com/PP-OCRv3/english/en_PP-OCRv3_rec_infer.tar"), ModelVersion.V3);
+    public static LocalDictOnlineRecognizationModel EnglishV3 => new("en_PP-OCRv3_rec", "en_dict.txt", ModelDownloadSources.Create("https://paddleocr.bj.bcebos.com/PP-OCRv3/english/en_PP-OCRv3_rec_infer.tar", "PaddlePaddle/en_PP-OCRv3_mobile_rec", "inference.json", "inference.pdiparams"), ModelVersion.V3);
 
     /// <summary>
     /// Slim pruned and quantized lightweight model, supporting English and number recognition
     /// (Size: 2.7MB)
     /// </summary>
-    public static LocalDictOnlineRecognizationModel EnglishNumberMobileSlimV2 => new("en_number_mobile_slim_v2.0_rec", "en_dict.txt", new Uri("https://paddleocr.bj.bcebos.com/dygraph_v2.0/en/en_number_mobile_v2.0_rec_slim_infer.tar"), ModelVersion.V2);
+    public static LocalDictOnlineRecognizationModel EnglishNumberMobileSlimV2 => new("en_number_mobile_slim_v2.0_rec", "en_dict.txt", ModelDownloadSources.Create("https://paddleocr.bj.bcebos.com/dygraph_v2.0/en/en_number_mobile_v2.0_rec_slim_infer.tar"), ModelVersion.V2);
 
     /// <summary>
     /// Original lightweight model, supporting English and number recognition
     /// (Size: 2.6MB)
     /// </summary>
-    public static LocalDictOnlineRecognizationModel EnglishNumberMobileV2 => new("en_number_mobile_v2.0_rec", "en_dict.txt", new Uri("https://paddleocr.bj.bcebos.com/dygraph_v2.0/multilingual/en_number_mobile_v2.0_rec_infer.tar"), ModelVersion.V2);
+    public static LocalDictOnlineRecognizationModel EnglishNumberMobileV2 => new("en_number_mobile_v2.0_rec", "en_dict.txt", ModelDownloadSources.Create("https://paddleocr.bj.bcebos.com/dygraph_v2.0/multilingual/en_number_mobile_v2.0_rec_infer.tar"), ModelVersion.V2);
 
     /// <summary>
     /// Lightweight model for Korean recognition
     /// (Size: 11MB)
     /// </summary>
-    public static LocalDictOnlineRecognizationModel KoreanV3 => new("korean_PP-OCRv3_rec", "korean_dict.txt", new Uri("https://paddleocr.bj.bcebos.com/PP-OCRv3/multilingual/korean_PP-OCRv3_rec_infer.tar"), ModelVersion.V3);
+    public static LocalDictOnlineRecognizationModel KoreanV3 => new("korean_PP-OCRv3_rec", "korean_dict.txt", ModelDownloadSources.Create("https://paddleocr.bj.bcebos.com/PP-OCRv3/multilingual/korean_PP-OCRv3_rec_infer.tar", "PaddlePaddle/korean_PP-OCRv3_mobile_rec", "inference.json", "inference.pdiparams"), ModelVersion.V3);
 
     /// <summary>
     /// Lightweight model for Japanese recognition
     /// (Size: 11MB)
     /// </summary>
-    public static LocalDictOnlineRecognizationModel JapanV3 => new("japan_PP-OCRv3_rec", "japan_dict.txt", new Uri("https://paddleocr.bj.bcebos.com/PP-OCRv3/multilingual/japan_PP-OCRv3_rec_infer.tar"), ModelVersion.V3);
+    public static LocalDictOnlineRecognizationModel JapanV3 => new("japan_PP-OCRv3_rec", "japan_dict.txt", ModelDownloadSources.Create("https://paddleocr.bj.bcebos.com/PP-OCRv3/multilingual/japan_PP-OCRv3_rec_infer.tar", "PaddlePaddle/japan_PP-OCRv3_mobile_rec", "inference.json", "inference.pdiparams"), ModelVersion.V3);
 
     /// <summary>
     /// Lightweight model for chinese cht
     /// (Size: 12MB)
     /// </summary>
-    public static LocalDictOnlineRecognizationModel TraditionalChineseV3 => new("chinese_cht_PP-OCRv3_rec", "chinese_cht_dict.txt", new Uri("https://paddleocr.bj.bcebos.com/PP-OCRv3/multilingual/chinese_cht_PP-OCRv3_rec_infer.tar"), ModelVersion.V3);
+    public static LocalDictOnlineRecognizationModel TraditionalChineseV3 => new("chinese_cht_PP-OCRv3_rec", "chinese_cht_dict.txt", ModelDownloadSources.Create("https://paddleocr.bj.bcebos.com/PP-OCRv3/multilingual/chinese_cht_PP-OCRv3_rec_infer.tar", "PaddlePaddle/chinese_cht_PP-OCRv3_mobile_rec", "inference.json", "inference.pdiparams"), ModelVersion.V3);
 
     /// <summary>
     /// Lightweight model for Telugu recognition
     /// (Size: 9.6MB)
     /// </summary>
-    public static LocalDictOnlineRecognizationModel TeluguV3 => new("te_PP-OCRv3_rec", "te_dict.txt", new Uri("https://paddleocr.bj.bcebos.com/PP-OCRv3/multilingual/te_PP-OCRv3_rec_infer.tar"), ModelVersion.V3);
+    public static LocalDictOnlineRecognizationModel TeluguV3 => new("te_PP-OCRv3_rec", "te_dict.txt", ModelDownloadSources.Create("https://paddleocr.bj.bcebos.com/PP-OCRv3/multilingual/te_PP-OCRv3_rec_infer.tar", "PaddlePaddle/te_PP-OCRv3_mobile_rec", "inference.json", "inference.pdiparams"), ModelVersion.V3);
 
     /// <summary>
     /// Lightweight model for Kannada recognition
     /// (Size: 9.9MB)
     /// </summary>
-    public static LocalDictOnlineRecognizationModel KannadaV3 => new("ka_PP-OCRv3_rec", "ka_dict.txt", new Uri("https://paddleocr.bj.bcebos.com/PP-OCRv3/multilingual/ka_PP-OCRv3_rec_infer.tar"), ModelVersion.V3);
+    public static LocalDictOnlineRecognizationModel KannadaV3 => new("ka_PP-OCRv3_rec", "ka_dict.txt", ModelDownloadSources.Create("https://paddleocr.bj.bcebos.com/PP-OCRv3/multilingual/ka_PP-OCRv3_rec_infer.tar", "PaddlePaddle/ka_PP-OCRv3_mobile_rec", "inference.json", "inference.pdiparams"), ModelVersion.V3);
 
     /// <summary>
     /// Lightweight model for Tamil recognition
     /// (Size: 9.6MB)
     /// </summary>
-    public static LocalDictOnlineRecognizationModel TamilV3 => new("ta_PP-OCRv3_rec", "ta_dict.txt", new Uri("https://paddleocr.bj.bcebos.com/PP-OCRv3/multilingual/ta_PP-OCRv3_rec_infer.tar"), ModelVersion.V3);
+    public static LocalDictOnlineRecognizationModel TamilV3 => new("ta_PP-OCRv3_rec", "ta_dict.txt", ModelDownloadSources.Create("https://paddleocr.bj.bcebos.com/PP-OCRv3/multilingual/ta_PP-OCRv3_rec_infer.tar", "PaddlePaddle/ta_PP-OCRv3_mobile_rec", "inference.json", "inference.pdiparams"), ModelVersion.V3);
 
     /// <summary>
     /// Lightweight model for latin recognition
     /// (Size: 9.7MB)
     /// </summary>
-    public static LocalDictOnlineRecognizationModel LatinV3 => new("latin_PP-OCRv3_rec", "latin_dict.txt", new Uri("https://paddleocr.bj.bcebos.com/PP-OCRv3/multilingual/latin_PP-OCRv3_rec_infer.tar"), ModelVersion.V3);
+    public static LocalDictOnlineRecognizationModel LatinV3 => new("latin_PP-OCRv3_rec", "latin_dict.txt", ModelDownloadSources.Create("https://paddleocr.bj.bcebos.com/PP-OCRv3/multilingual/latin_PP-OCRv3_rec_infer.tar", "PaddlePaddle/latin_PP-OCRv3_mobile_rec", "inference.json", "inference.pdiparams"), ModelVersion.V3);
 
     /// <summary>
     /// Lightweight model for arabic recognition
     /// (Size: 9.6MB)
     /// </summary>
-    public static LocalDictOnlineRecognizationModel ArabicV3 => new("arabic_PP-OCRv3_rec", "arabic_dict.txt", new Uri("https://paddleocr.bj.bcebos.com/PP-OCRv3/multilingual/arabic_PP-OCRv3_rec_infer.tar"), ModelVersion.V3);
+    public static LocalDictOnlineRecognizationModel ArabicV3 => new("arabic_PP-OCRv3_rec", "arabic_dict.txt", ModelDownloadSources.Create("https://paddleocr.bj.bcebos.com/PP-OCRv3/multilingual/arabic_PP-OCRv3_rec_infer.tar", "PaddlePaddle/arabic_PP-OCRv3_mobile_rec", "inference.json", "inference.pdiparams"), ModelVersion.V3);
 
     /// <summary>
     /// Lightweight model for cyrillic recognition
     /// (Size: 9.6MB)
     /// </summary>
-    public static LocalDictOnlineRecognizationModel CyrillicV3 => new("cyrillic_PP-OCRv3_rec", "cyrillic_dict.txt", new Uri("https://paddleocr.bj.bcebos.com/PP-OCRv3/multilingual/cyrillic_PP-OCRv3_rec_infer.tar"), ModelVersion.V3);
+    public static LocalDictOnlineRecognizationModel CyrillicV3 => new("cyrillic_PP-OCRv3_rec", "cyrillic_dict.txt", ModelDownloadSources.Create("https://paddleocr.bj.bcebos.com/PP-OCRv3/multilingual/cyrillic_PP-OCRv3_rec_infer.tar", "PaddlePaddle/cyrillic_PP-OCRv3_mobile_rec", "inference.json", "inference.pdiparams"), ModelVersion.V3);
 
     /// <summary>
     /// Lightweight model for devanagari recognition
     /// (Size: 9.9MB)
     /// </summary>
-    public static LocalDictOnlineRecognizationModel DevanagariV3 => new("devanagari_PP-OCRv3_rec", "devanagari_dict.txt", new Uri("https://paddleocr.bj.bcebos.com/PP-OCRv3/multilingual/devanagari_PP-OCRv3_rec_infer.tar"), ModelVersion.V3);
+    public static LocalDictOnlineRecognizationModel DevanagariV3 => new("devanagari_PP-OCRv3_rec", "devanagari_dict.txt", ModelDownloadSources.Create("https://paddleocr.bj.bcebos.com/PP-OCRv3/multilingual/devanagari_PP-OCRv3_rec_infer.tar", "PaddlePaddle/devanagari_PP-OCRv3_mobile_rec", "inference.json", "inference.pdiparams"), ModelVersion.V3);
 
     /// <summary>
     /// Provides an array of all available recognizer models, including for Chinese, English, Korean, Japanese, Arabic, Cyrillic and so on.
@@ -236,6 +291,17 @@ public record LocalDictOnlineRecognizationModel(string Name, string DictName, Ur
     {
         ChineseV5,
         ChineseServerV5,
+        EnglishV5,
+        KoreanV5,
+        LatinV5,
+        EastSlavicV5,
+        ThaiV5,
+        GreekV5,
+        CyrillicV5,
+        ArabicV5,
+        DevanagariV5,
+        TeluguV5,
+        TamilV5,
         ChineseV4,
         EnglishV4,
         KoreanV4,

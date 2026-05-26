@@ -11,7 +11,7 @@ public class TableTest
     [Theory]
     [InlineData("en_ppstructure_mobile_v2.0_SLANet")]
     [InlineData("ch_ppstructure_mobile_v2.0_SLANet")]
-    public void LocalV3TableTest(string modelName)
+    public void LocalTableTest(string modelName)
     {
         using PaddleOcrTableRecognizer tableRec = new(LocalTableRecognitionModel.All.Single(x => x.Name == modelName));
         using Mat src = Cv2.ImRead("samples/table.jpg");
@@ -27,54 +27,50 @@ public class TableTest
     [Theory]
     [InlineData("en_ppstructure_mobile_v2.0_SLANet", "<table><thead><tr><td>Methods</td>")]
     [InlineData("ch_ppstructure_mobile_v2.0_SLANet", "<table><tbody><tr><td>Methods</td>")]
-    public async Task LocalV3TableRebuild(string modelName, string expectedHtmlStart)
+    public async Task LocalTableRebuild(string modelName, string expectedHtmlStart)
     {
         using Mat src = Cv2.ImRead("samples/table.jpg");
-        Task<TableDetectionResult> tableResultTask = Task.Run(() =>
+        TableDetectionResult tableResult;
+        using (PaddleOcrTableRecognizer tableRec = new(LocalTableRecognitionModel.All.Single(x => x.Name == modelName)))
         {
-            using PaddleOcrTableRecognizer tableRec = new(LocalTableRecognitionModel.All.Single(x => x.Name == modelName));
-            return tableRec.Run(src);
-        });
+            tableResult = tableRec.Run(src);
+        }
 
-        Task<PaddleOcrResult> ocrResultTask = Task.Run(() =>
+        PaddleOcrResult ocrResult;
+        using (PaddleOcrAll all = new(LocalFullModels.ChineseV5))
         {
-            using PaddleOcrAll all = new(LocalFullModels.ChineseV3);
             all.Detector.UnclipRatio = 1.2f;
-            return all.Run(src);
-        });
+            ocrResult = all.Run(src);
+        }
 
-        TableDetectionResult tableResult = await tableResultTask;
-        PaddleOcrResult ocrResult = await ocrResultTask;
         //tableResult.Visualize(src, Scalar.LightGreen).ImWrite(modelName + ".jpg");
 
         string html = tableResult.RebuildTable(ocrResult);
         Assert.StartsWith(expectedHtmlStart, html);
+        await Task.CompletedTask;
     }
 
     [Theory]
     [InlineData("en_ppstructure_mobile_v2.0_SLANet", "<table><thead><tr><td>Methods</td>")]
     [InlineData("ch_ppstructure_mobile_v2.0_SLANet", "<table><tbody><tr><td>Methods</td>")]
-    public async Task OnlineV3TableRebuild(string modelName, string expectedHtmlStart)
+    public async Task OnlineTableRebuild(string modelName, string expectedHtmlStart)
     {
         using Mat src = Cv2.ImRead("samples/table.jpg");
 
-        Task<PaddleOcrResult> ocrResultTask = Task.Run(() =>
+        PaddleOcrResult ocrResult;
+        using (PaddleOcrAll all = new(LocalFullModels.ChineseV5))
         {
-            using PaddleOcrAll all = new(LocalFullModels.ChineseV3);
             all.Detector.UnclipRatio = 1.2f;
-            return all.Run(src);
-        });
+            ocrResult = all.Run(src);
+        }
 
-        Task<TableDetectionResult> tableResultTask = Task.Run(async () =>
+        OnlineTableRecognitionModel tableOnlineModel = OnlineTableRecognitionModel.All.Single(x => x.Name == modelName);
+        TableRecognitionModel tableModel = await tableOnlineModel.DownloadAsync();
+        TableDetectionResult tableResult;
+        using (PaddleOcrTableRecognizer tableRec = new(tableModel))
         {
-            OnlineTableRecognitionModel tableOnlineModel = OnlineTableRecognitionModel.All.Single(x => x.Name == modelName);
-            TableRecognitionModel tableModel = await tableOnlineModel.DownloadAsync();
-            using PaddleOcrTableRecognizer tableRec = new(tableModel);
-            return tableRec.Run(src);
-        });
-
-        PaddleOcrResult ocrResult = await ocrResultTask;
-        TableDetectionResult tableResult = await tableResultTask;
+            tableResult = tableRec.Run(src);
+        }
 
         string html = tableResult.RebuildTable(ocrResult);
         Assert.StartsWith(expectedHtmlStart, html);
@@ -83,7 +79,7 @@ public class TableTest
     [Theory]
     [InlineData("en_ppstructure_mobile_v2.0_SLANet")]
     [InlineData("ch_ppstructure_mobile_v2.0_SLANet")]
-    public async Task OnlineV3TableTest(string modelName)
+    public async Task OnlineTableTest(string modelName)
     {
         OnlineTableRecognitionModel tableOnlineModel = OnlineTableRecognitionModel.All.Single(x => x.Name == modelName);
         TableRecognitionModel tableModel = await tableOnlineModel.DownloadAsync();
