@@ -31,6 +31,7 @@ jobs:
           - { title: linux-arm64,                rid: linux-arm64, }
           - { title: osx-x64,                    rid: osx-x64,     }
           - { title: osx-arm64,                  rid: osx-arm64,   }
+      fail-fast: false
   
     steps:
     - name: Download Artifacts
